@@ -37,8 +37,44 @@ export class GitService {
 		} catch (error) {
 			console.error("Error fetching commits:", error);
 			// Return demo data for development
-			return this.getDemoData();
+			return this.calculateSizeChanges(this.getDemoData());
 		}
+	}
+
+	private calculateSizeChanges(commits: CommitData[]): CommitData[] {
+		// Process commits in order to track size changes
+		for (let i = 0; i < commits.length; i++) {
+			if (i === 0) {
+				// First commit: no previous data, mark all as unchanged
+				commits[i].files.forEach((file) => {
+					file.sizeChange = "unchanged";
+				});
+			} else {
+				// Compare with previous commit
+				const previousCommit = commits[i - 1];
+				const previousFileMap = new Map(
+					previousCommit.files.map((f) => [f.path, f]),
+				);
+
+				commits[i].files.forEach((file) => {
+					const prevFile = previousFileMap.get(file.path);
+					if (prevFile) {
+						file.previousSize = prevFile.size;
+						if (file.size > prevFile.size) {
+							file.sizeChange = "increase";
+						} else if (file.size < prevFile.size) {
+							file.sizeChange = "decrease";
+						} else {
+							file.sizeChange = "unchanged";
+						}
+					} else {
+						// New file
+						file.sizeChange = "increase";
+					}
+				});
+			}
+		}
+		return commits;
 	}
 
 	private parseCommits(data: RawCommitData[]): CommitData[] {
@@ -187,7 +223,7 @@ export class GitService {
 						id: "README.md",
 						path: "README.md",
 						name: "README.md",
-						size: 80,
+						size: 800, // Significant increase
 						type: "file",
 					},
 					{ id: "src", path: "src", name: "src", size: 0, type: "directory" },
@@ -209,14 +245,14 @@ export class GitService {
 						id: "src/components/App.tsx",
 						path: "src/components/App.tsx",
 						name: "App.tsx",
-						size: 250,
+						size: 2500, // Large increase
 						type: "file",
 					},
 					{
 						id: "src/components/Header.tsx",
 						path: "src/components/Header.tsx",
 						name: "Header.tsx",
-						size: 120,
+						size: 80, // Decrease (refactored)
 						type: "file",
 					},
 					{
@@ -230,7 +266,7 @@ export class GitService {
 						id: "src/styles/main.css",
 						path: "src/styles/main.css",
 						name: "main.css",
-						size: 150,
+						size: 1500, // New large file
 						type: "file",
 					},
 					{
@@ -244,7 +280,105 @@ export class GitService {
 						id: "src/utils/helpers.ts",
 						path: "src/utils/helpers.ts",
 						name: "helpers.ts",
-						size: 100,
+						size: 1000, // New file
+						type: "file",
+					},
+				],
+				edges: [
+					{ source: "src", target: "src/index.ts", type: "parent" },
+					{ source: "src", target: "src/components", type: "parent" },
+					{ source: "src", target: "src/styles", type: "parent" },
+					{ source: "src", target: "src/utils", type: "parent" },
+					{
+						source: "src/components",
+						target: "src/components/App.tsx",
+						type: "parent",
+					},
+					{
+						source: "src/components",
+						target: "src/components/Header.tsx",
+						type: "parent",
+					},
+					{
+						source: "src/styles",
+						target: "src/styles/main.css",
+						type: "parent",
+					},
+					{
+						source: "src/utils",
+						target: "src/utils/helpers.ts",
+						type: "parent",
+					},
+				],
+			},
+			{
+				hash: "jkl012",
+				message: "Refactor and optimize",
+				author: "Developer",
+				date: new Date("2024-01-04"),
+				files: [
+					{
+						id: "README.md",
+						path: "README.md",
+						name: "README.md",
+						size: 800,
+						type: "file",
+					},
+					{ id: "src", path: "src", name: "src", size: 0, type: "directory" },
+					{
+						id: "src/index.ts",
+						path: "src/index.ts",
+						name: "index.ts",
+						size: 200, // Small increase
+						type: "file",
+					},
+					{
+						id: "src/components",
+						path: "src/components",
+						name: "components",
+						size: 0,
+						type: "directory",
+					},
+					{
+						id: "src/components/App.tsx",
+						path: "src/components/App.tsx",
+						name: "App.tsx",
+						size: 1800, // Decrease (optimized)
+						type: "file",
+					},
+					{
+						id: "src/components/Header.tsx",
+						path: "src/components/Header.tsx",
+						name: "Header.tsx",
+						size: 300, // Increase
+						type: "file",
+					},
+					{
+						id: "src/styles",
+						path: "src/styles",
+						name: "styles",
+						size: 0,
+						type: "directory",
+					},
+					{
+						id: "src/styles/main.css",
+						path: "src/styles/main.css",
+						name: "main.css",
+						size: 1200, // Optimized
+						type: "file",
+					},
+					{
+						id: "src/utils",
+						path: "src/utils",
+						name: "utils",
+						size: 0,
+						type: "directory",
+					},
+					{
+						id: "src/utils/helpers.ts",
+						path: "src/utils/helpers.ts",
+						name: "helpers.ts",
+						size: 1500, // Expanded
 						type: "file",
 					},
 				],

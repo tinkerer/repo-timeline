@@ -1,8 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { GitService } from "../services/gitService";
 import { CommitData, FileNode } from "../types";
 import { RepoGraph3D } from "./RepoGraph3D";
-import { TimelineScrubber } from "./TimelineScrubber";
+import {
+	PlaybackDirection,
+	PlaybackSpeed,
+	TimelineScrubber,
+} from "./TimelineScrubber";
 
 interface RepoTimelineProps {
 	repoPath: string;
@@ -13,6 +17,11 @@ export function RepoTimeline({ repoPath }: RepoTimelineProps) {
 	const [currentIndex, setCurrentIndex] = useState(0);
 	const [loading, setLoading] = useState(true);
 	const [selectedNode, setSelectedNode] = useState<FileNode | null>(null);
+	const [isPlaying, setIsPlaying] = useState(false);
+	const [playbackSpeed, setPlaybackSpeed] = useState<PlaybackSpeed>(1);
+	const [playbackDirection, setPlaybackDirection] =
+		useState<PlaybackDirection>("forward");
+	const playbackTimerRef = useRef<number | null>(null);
 
 	useEffect(() => {
 		const loadCommits = async () => {
@@ -21,7 +30,7 @@ export function RepoTimeline({ repoPath }: RepoTimelineProps) {
 				const gitService = new GitService(repoPath);
 				const commitsData = await gitService.getCommitHistory();
 				setCommits(commitsData);
-				setCurrentIndex(commitsData.length - 1); // Start at latest commit
+				setCurrentIndex(0); // Start at first commit
 			} catch (error) {
 				console.error("Error loading commits:", error);
 			} finally {
@@ -31,6 +40,48 @@ export function RepoTimeline({ repoPath }: RepoTimelineProps) {
 
 		loadCommits();
 	}, [repoPath]);
+
+	// Playback auto-advance effect
+	useEffect(() => {
+		if (isPlaying && commits.length > 0) {
+			// Base interval is 1 second, adjusted by playback speed
+			const interval = 1000 / playbackSpeed;
+
+			playbackTimerRef.current = setInterval(() => {
+				setCurrentIndex((prevIndex) => {
+					let nextIndex: number;
+
+					if (playbackDirection === "forward") {
+						nextIndex = prevIndex + 1;
+						if (nextIndex >= commits.length) {
+							// Stop at end
+							setIsPlaying(false);
+							return commits.length - 1;
+						}
+					} else {
+						nextIndex = prevIndex - 1;
+						if (nextIndex < 0) {
+							// Stop at beginning
+							setIsPlaying(false);
+							return 0;
+						}
+					}
+
+					return nextIndex;
+				});
+			}, interval);
+
+			return () => {
+				if (playbackTimerRef.current) {
+					clearInterval(playbackTimerRef.current);
+				}
+			};
+		}
+	}, [isPlaying, playbackSpeed, playbackDirection, commits.length]);
+
+	const handlePlayPause = () => {
+		setIsPlaying(!isPlaying);
+	};
 
 	const handleNodeClick = (node: FileNode) => {
 		setSelectedNode(node);
@@ -79,6 +130,12 @@ export function RepoTimeline({ repoPath }: RepoTimelineProps) {
 				commits={commits}
 				currentIndex={currentIndex}
 				onIndexChange={setCurrentIndex}
+				isPlaying={isPlaying}
+				onPlayPause={handlePlayPause}
+				playbackSpeed={playbackSpeed}
+				onSpeedChange={setPlaybackSpeed}
+				playbackDirection={playbackDirection}
+				onDirectionChange={setPlaybackDirection}
 			/>
 
 			{/* Node Info Panel */}

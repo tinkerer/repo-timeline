@@ -58,13 +58,19 @@ export class ForceSimulation {
 		// Update positions
 		const damping = 0.9;
 		this.nodes.forEach((node) => {
-			node.vx! *= damping;
-			node.vy! *= damping;
-			node.vz! *= damping;
+			if (
+				node.vx !== undefined &&
+				node.vy !== undefined &&
+				node.vz !== undefined
+			) {
+				node.vx *= damping;
+				node.vy *= damping;
+				node.vz *= damping;
 
-			node.x! += node.vx!;
-			node.y! += node.vy!;
-			node.z! += node.vz!;
+				node.x! += node.vx;
+				node.y! += node.vy;
+				node.z! += node.vz;
+			}
 		});
 	}
 

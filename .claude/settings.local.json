@@ -1,21 +1,24 @@
 {
-  "permissions": {
-    "allow": [
-      "Bash(npm create:*)",
-      "Bash(npm install:*)",
-      "Bash(npm run dev:*)",
-      "Bash(npx @biomejs/biome init:*)",
-      "Bash(npx @biomejs/biome migrate:*)",
-      "Bash(pnpm install:*)",
-      "Bash(pnpm remove:*)",
-      "Bash(git remote:*)",
-      "Bash(pnpm build:*)",
-      "Bash(pnpm lint:*)",
-      "Bash(pnpm lint:fix:*)",
-      "Bash(git log:*)",
-      "Bash(git add:*)"
-    ],
-    "deny": [],
-    "ask": []
-  }
+	"permissions": {
+		"allow": [
+			"Bash(npm create:*)",
+			"Bash(npm install:*)",
+			"Bash(npm run dev:*)",
+			"Bash(npx @biomejs/biome init:*)",
+			"Bash(npx @biomejs/biome migrate:*)",
+			"Bash(pnpm install:*)",
+			"Bash(pnpm remove:*)",
+			"Bash(git remote:*)",
+			"Bash(pnpm build:*)",
+			"Bash(pnpm lint:*)",
+			"Bash(pnpm lint:fix:*)",
+			"Bash(git log:*)",
+			"Bash(git add:*)",
+			"Bash(git commit:*)",
+			"Bash(git push:*)",
+			"Bash(pnpm add:*)"
+		],
+		"deny": [],
+		"ask": []
+	}
 }

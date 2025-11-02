@@ -10,6 +10,8 @@ export interface FileNode {
 	vx?: number;
 	vy?: number;
 	vz?: number;
+	previousSize?: number; // Size in previous commit
+	sizeChange?: "increase" | "decrease" | "unchanged"; // Change from previous commit
 }
 
 export interface FileEdge {
