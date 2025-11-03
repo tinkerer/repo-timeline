@@ -4,6 +4,7 @@ export interface GitHubPR {
 	number: number;
 	title: string;
 	merged_at: string | null;
+	merge_commit_sha?: string | null;
 	user: {
 		login: string;
 	};
@@ -386,7 +387,9 @@ export class GitHubApiService {
 			}));
 
 			const commit: CommitData = {
-				hash: `pr-${pr.number}`,
+				hash: pr.merge_commit_sha
+					? pr.merge_commit_sha.substring(0, 7)
+					: `pr-${pr.number}`,
 				message: pr.title,
 				author: pr.user.login,
 				date: new Date(pr.merged_at || Date.now()),

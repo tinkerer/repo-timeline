@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS pull_requests (
   title TEXT NOT NULL,
   author TEXT NOT NULL,
   merged_at INTEGER NOT NULL, -- Unix timestamp
+  merge_commit_sha TEXT, -- Git commit SHA for the merge
   created_at INTEGER NOT NULL,
   FOREIGN KEY (repo_id) REFERENCES repos(id) ON DELETE CASCADE,
   UNIQUE(repo_id, pr_number)

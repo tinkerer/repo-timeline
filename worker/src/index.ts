@@ -49,6 +49,7 @@ interface PullRequest {
 	title: string;
 	user: { login: string };
 	merged_at: string;
+	merge_commit_sha?: string;
 }
 
 export default {
@@ -288,7 +289,7 @@ async function getCachedData(
 	// Get all PRs
 	const prs = await db
 		.prepare(`
-		SELECT pr_number, title, author, merged_at, id
+		SELECT pr_number, title, author, merged_at, merge_commit_sha, id
 		FROM pull_requests
 		WHERE repo_id = ?
 		ORDER BY merged_at ASC
@@ -320,6 +321,7 @@ async function getCachedData(
 				title: pr.title,
 				user: { login: pr.author },
 				merged_at: new Date(pr.merged_at * 1000).toISOString(),
+				merge_commit_sha: pr.merge_commit_sha,
 				files: files,
 			};
 		}),
@@ -442,6 +444,7 @@ async function fetchAllMergedPRsMetadata(
 				title: pr.title,
 				user: { login: pr.user.login },
 				merged_at: pr.merged_at,
+				merge_commit_sha: pr.merge_commit_sha,
 			}));
 
 		allPRs.push(...mergedPRs);
@@ -608,8 +611,8 @@ async function storeRepoData(
 		// Insert PR first
 		await db
 			.prepare(`
-			INSERT INTO pull_requests (repo_id, pr_number, title, author, merged_at, created_at)
-			VALUES (?, ?, ?, ?, ?, ?)
+			INSERT INTO pull_requests (repo_id, pr_number, title, author, merged_at, merge_commit_sha, created_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?)
 			ON CONFLICT(repo_id, pr_number) DO NOTHING
 		`)
 			.bind(
@@ -618,6 +621,7 @@ async function storeRepoData(
 				pr.title,
 				pr.user.login,
 				Math.floor(new Date(pr.merged_at).getTime() / 1000),
+				pr.merge_commit_sha || null,
 				now,
 			)
 			.run();
