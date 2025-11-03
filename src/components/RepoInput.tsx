@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 export function RepoInput() {
 	const navigate = useNavigate();
-	const [input, setInput] = useState("");
+	const [input, setInput] = useState("rjwalters/repo-timeline");
 	const [error, setError] = useState<string | null>(null);
 
 	const handleSubmit = (e: React.FormEvent) => {
