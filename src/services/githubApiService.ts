@@ -63,6 +63,12 @@ export class GitHubApiService {
 		this.repo = repo;
 		this.token = token;
 		this.workerUrl = workerUrl;
+		console.log("GitHubApiService initialized:", {
+			repoPath,
+			hasToken: !!token,
+			workerUrl,
+			willUseWorker: !!workerUrl,
+		});
 	}
 
 	/**
