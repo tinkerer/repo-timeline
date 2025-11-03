@@ -1,7 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { RepoInput } from "../components/RepoInput";
 import { TestScene } from "../components/TestScene";
 import "../index.css";
-import { RepoInput } from "./RepoInput";
 import { RepoWrapper } from "./RepoWrapper";
 
 // Set to true to show test scene instead of normal app
