@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Repo Timeline Visualizer</title>
+  <script>
+    // SPA redirect for GitHub Pages
+    // This script takes the current URL and redirects to the root with the path as a query parameter
+    // The root index.html will then handle the routing
+    const pathSegmentsToKeep = 1; // Keep "/repo-timeline"
+
+    const path = window.location.pathname.slice(1).split('/').slice(pathSegmentsToKeep).join('/');
+    const query = window.location.search;
+
+    window.location.replace(
+      window.location.origin +
+      '/' + window.location.pathname.split('/').slice(0, pathSegmentsToKeep + 1).join('/') +
+      '/?p=/' + path + query
+    );
+  </script>
+</head>
+<body>
+  <!-- GitHub Pages SPA redirect -->
+</body>
+</html>
