@@ -153,27 +153,12 @@ async function getCachedData(db: D1Database, fullName: string): Promise<{
 		return null;
 	}
 
-	// Get all PRs with their files
+	// Get all PRs
 	const prs = await db.prepare(`
-		SELECT
-			pr.pr_number,
-			pr.title,
-			pr.author,
-			pr.merged_at,
-			GROUP_CONCAT(
-				json_object(
-					'filename', f.filename,
-					'status', f.status,
-					'additions', f.additions,
-					'deletions', f.deletions,
-					'previous_filename', f.previous_filename
-				)
-			) as files
-		FROM pull_requests pr
-		LEFT JOIN pr_files f ON f.pr_id = pr.id
-		WHERE pr.repo_id = ?
-		GROUP BY pr.id
-		ORDER BY pr.merged_at ASC
+		SELECT pr_number, title, author, merged_at, id
+		FROM pull_requests
+		WHERE repo_id = ?
+		ORDER BY merged_at ASC
 	`).bind(repo.id).all();
 
 	if (!prs.results || prs.results.length === 0) {
@@ -181,10 +166,15 @@ async function getCachedData(db: D1Database, fullName: string): Promise<{
 	}
 
 	// Transform data to match GitHub API format
-	const transformedPRs = prs.results.map((pr: any) => {
-		const files = pr.files
-			? pr.files.split(',').map((f: string) => JSON.parse(f))
-			: [];
+	const transformedPRs = await Promise.all(prs.results.map(async (pr: any) => {
+		// Get files for this PR
+		const filesResult = await db.prepare(`
+			SELECT filename, status, additions, deletions, previous_filename
+			FROM pr_files
+			WHERE pr_id = ?
+		`).bind(pr.id).all();
+
+		const files = filesResult.results || [];
 
 		return {
 			number: pr.pr_number,
@@ -193,7 +183,7 @@ async function getCachedData(db: D1Database, fullName: string): Promise<{
 			merged_at: new Date(pr.merged_at * 1000).toISOString(),
 			files: files,
 		};
-	});
+	}));
 
 	return {
 		prs: transformedPRs,
@@ -264,13 +254,14 @@ async function fetchMergedPRs(
 	token: string,
 	owner: string,
 	repo: string,
-	sinceNumber?: number
+	sinceNumber?: number,
+	maxPages: number = 3  // Limit pages to avoid subrequest limit
 ): Promise<any[]> {
 	const allPRs: any[] = [];
 	let page = 1;
 	const perPage = 100;
 
-	while (true) {
+	while (page <= maxPages) {
 		const url = `https://api.github.com/repos/${owner}/${repo}/pulls?state=closed&per_page=${perPage}&page=${page}&sort=created&direction=asc`;
 
 		const response = await fetch(url, {
@@ -305,8 +296,14 @@ async function fetchMergedPRs(
 			? mergedPRs.filter(pr => pr.number >= sinceNumber)
 			: mergedPRs;
 
+		// Limit total PRs to avoid subrequest limit (50 per worker invocation)
+		const prLimit = 40; // Leave room for other requests
+		const prsToFetch = allPRs.length + newPRs.length > prLimit
+			? newPRs.slice(0, prLimit - allPRs.length)
+			: newPRs;
+
 		// Fetch files for each PR
-		for (const pr of newPRs) {
+		for (const pr of prsToFetch) {
 			const filesUrl = `https://api.github.com/repos/${owner}/${repo}/pulls/${pr.number}/files`;
 			const filesResponse = await fetch(filesUrl, {
 				headers: {
@@ -323,9 +320,12 @@ async function fetchMergedPRs(
 				console.error(`Failed to fetch files for PR #${pr.number}`);
 				allPRs.push({ ...pr, files: [] });
 			}
+		}
 
-			// Rate limit protection
-			await new Promise(resolve => setTimeout(resolve, 100));
+		// If we hit the PR limit, stop fetching more pages
+		if (allPRs.length >= prLimit) {
+			console.log(`Hit PR limit of ${prLimit}, stopping pagination`);
+			break;
 		}
 
 		// If we got fewer PRs than requested, we're done
@@ -352,34 +352,27 @@ async function storeRepoData(
 	const fullName = `${owner}/${name}`;
 	const now = Math.floor(Date.now() / 1000);
 
-	// Start transaction
-	const batch = [];
-
-	// Insert or update repo
+	// Insert or update repo first
 	if (isUpdate) {
 		const lastPrNumber = Math.max(...prs.map(pr => pr.number));
-		batch.push(
-			db.prepare(
-				'UPDATE repos SET last_updated = ?, last_pr_number = ? WHERE full_name = ?'
-			).bind(now, lastPrNumber, fullName)
-		);
+		await db.prepare(
+			'UPDATE repos SET last_updated = ?, last_pr_number = ? WHERE full_name = ?'
+		).bind(now, lastPrNumber, fullName).run();
 	} else {
-		batch.push(
-			db.prepare(`
-				INSERT INTO repos (owner, name, full_name, last_updated, last_pr_number, created_at)
-				VALUES (?, ?, ?, ?, ?, ?)
-				ON CONFLICT(full_name) DO UPDATE SET last_updated = ?, last_pr_number = ?
-			`).bind(
-				owner,
-				name,
-				fullName,
-				now,
-				prs.length > 0 ? Math.max(...prs.map(pr => pr.number)) : 0,
-				now,
-				now,
-				prs.length > 0 ? Math.max(...prs.map(pr => pr.number)) : 0
-			)
-		);
+		await db.prepare(`
+			INSERT INTO repos (owner, name, full_name, last_updated, last_pr_number, created_at)
+			VALUES (?, ?, ?, ?, ?, ?)
+			ON CONFLICT(full_name) DO UPDATE SET last_updated = ?, last_pr_number = ?
+		`).bind(
+			owner,
+			name,
+			fullName,
+			now,
+			prs.length > 0 ? Math.max(...prs.map(pr => pr.number)) : 0,
+			now,
+			now,
+			prs.length > 0 ? Math.max(...prs.map(pr => pr.number)) : 0
+		).run();
 	}
 
 	// Get repo ID
@@ -393,49 +386,45 @@ async function storeRepoData(
 
 	// Insert PRs and their files
 	for (const pr of prs) {
-		// Insert PR
-		batch.push(
-			db.prepare(`
-				INSERT INTO pull_requests (repo_id, pr_number, title, author, merged_at, created_at)
-				VALUES (?, ?, ?, ?, ?, ?)
-				ON CONFLICT(repo_id, pr_number) DO NOTHING
-			`).bind(
-				repo.id,
-				pr.number,
-				pr.title,
-				pr.user.login,
-				Math.floor(new Date(pr.merged_at).getTime() / 1000),
-				now
-			)
-		);
+		// Insert PR first
+		await db.prepare(`
+			INSERT INTO pull_requests (repo_id, pr_number, title, author, merged_at, created_at)
+			VALUES (?, ?, ?, ?, ?, ?)
+			ON CONFLICT(repo_id, pr_number) DO NOTHING
+		`).bind(
+			repo.id,
+			pr.number,
+			pr.title,
+			pr.user.login,
+			Math.floor(new Date(pr.merged_at).getTime() / 1000),
+			now
+		).run();
 
 		// Get PR ID
 		const prRow = await db.prepare(
 			'SELECT id FROM pull_requests WHERE repo_id = ? AND pr_number = ?'
 		).bind(repo.id, pr.number).first();
 
-		if (prRow && pr.files) {
-			// Insert files
-			for (const file of pr.files) {
-				batch.push(
-					db.prepare(`
-						INSERT INTO pr_files (pr_id, filename, status, additions, deletions, previous_filename)
-						VALUES (?, ?, ?, ?, ?, ?)
-						ON CONFLICT DO NOTHING
-					`).bind(
-						prRow.id,
-						file.filename,
-						file.status,
-						file.additions || 0,
-						file.deletions || 0,
-						file.previous_filename || null
-					)
-				);
-			}
+		if (prRow && pr.files && pr.files.length > 0) {
+			// Batch insert files for this PR
+			const fileBatch = pr.files.map((file: any) =>
+				db.prepare(`
+					INSERT INTO pr_files (pr_id, filename, status, additions, deletions, previous_filename)
+					VALUES (?, ?, ?, ?, ?, ?)
+					ON CONFLICT DO NOTHING
+				`).bind(
+					prRow.id,
+					file.filename,
+					file.status,
+					file.additions || 0,
+					file.deletions || 0,
+					file.previous_filename || null
+				)
+			);
+
+			await db.batch(fileBatch);
 		}
 	}
 
-	// Execute batch
-	await db.batch(batch);
 	console.log(`Stored ${prs.length} PRs for ${fullName}`);
 }

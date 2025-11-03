@@ -6,7 +6,7 @@ compatibility_date = "2024-01-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "repo_timeline"
-database_id = "" # Will be filled after creating the database
+database_id = "d3bf793b-bc07-45f0-8b26-68a66f680a92"
 
 # Secrets (set with: wrangler secret put GITHUB_TOKENS)
 # GITHUB_TOKENS = "token1,token2,token3"  # Comma-separated for load balancing
