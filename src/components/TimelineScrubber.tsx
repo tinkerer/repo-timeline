@@ -93,8 +93,24 @@ export function TimelineScrubber({
 								{currentCommit.date.toLocaleDateString()}
 							</div>
 						</div>
-						<div className="text-sm text-gray-400">
-							Commit {currentIndex + 1} of {commits.length}
+						<div className="flex flex-col items-end gap-1">
+							{/* Date/Time Clock */}
+							{isPlaying && (
+								<div className="text-lg font-mono text-blue-400 tabular-nums">
+									{currentCommit.date.toLocaleDateString("en-US", {
+										month: "short",
+										day: "numeric",
+										year: "numeric",
+									})}{" "}
+									{currentCommit.date.toLocaleTimeString("en-US", {
+										hour: "2-digit",
+										minute: "2-digit",
+									})}
+								</div>
+							)}
+							<div className="text-sm text-gray-400">
+								Commit {currentIndex + 1} of {commits.length}
+							</div>
 						</div>
 					</div>
 				</div>
@@ -171,16 +187,35 @@ export function TimelineScrubber({
 						<SkipForward size={18} />
 					</button>
 
-					{/* Slider */}
+					{/* Slider with PR markers */}
 					<div className="flex-1 flex items-center gap-4 ml-4">
-						<input
-							type="range"
-							min={0}
-							max={commits.length - 1}
-							value={currentIndex}
-							onChange={handleSliderChange}
-							className="flex-1 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
-						/>
+						<div className="flex-1 relative">
+							{/* PR Markers */}
+							<div className="absolute inset-0 pointer-events-none flex items-center">
+								{commits.map((_, index) => {
+									const position = (index / (commits.length - 1)) * 100;
+									return (
+										<div
+											key={index}
+											className="absolute w-0.5 h-4 bg-gray-500"
+											style={{
+												left: `${position}%`,
+												transform: "translateX(-50%)",
+											}}
+										/>
+									);
+								})}
+							</div>
+							{/* Slider */}
+							<input
+								type="range"
+								min={0}
+								max={commits.length - 1}
+								value={currentIndex}
+								onChange={handleSliderChange}
+								className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider relative z-10"
+							/>
+						</div>
 					</div>
 				</div>
 
