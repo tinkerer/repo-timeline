@@ -21,16 +21,16 @@ export function RepoGraph3D({ nodes, edges, onNodeClick }: RepoGraph3DProps) {
 		// Create a deep copy of nodes to avoid mutating props
 		const nodesCopy = nodes.map((n) => ({ ...n }));
 
-		// Initialize or update simulation
+		// Initialize or update simulation with tuned parameters
 		simulationRef.current = new ForceSimulation(nodesCopy, edges, {
-			strength: 0.05,
-			distance: 30,
-			iterations: 300,
+			strength: 0.1, // Spring stiffness
+			distance: 30, // Ideal spring distance
+			iterations: 500, // More iterations for better convergence
 		});
 
 		// Run simulation
 		let iterations = 0;
-		const maxIterations = 300;
+		const maxIterations = 500;
 
 		const simulate = () => {
 			if (!simulationRef.current || iterations >= maxIterations) {
@@ -44,11 +44,20 @@ export function RepoGraph3D({ nodes, edges, onNodeClick }: RepoGraph3DProps) {
 			setSimulationNodes([...simulationRef.current.getNodes()]);
 			iterations++;
 
-			// Slow down the simulation over time
-			if (iterations < 100) {
+			// Slow down the simulation over time for smooth convergence
+			if (iterations < 150) {
+				// Fast initial settling
 				animationFrameRef.current = requestAnimationFrame(simulate);
-			} else if (iterations % 2 === 0) {
-				animationFrameRef.current = requestAnimationFrame(simulate);
+			} else if (iterations < 300) {
+				// Medium speed
+				if (iterations % 2 === 0) {
+					animationFrameRef.current = requestAnimationFrame(simulate);
+				}
+			} else {
+				// Slow refinement
+				if (iterations % 3 === 0) {
+					animationFrameRef.current = requestAnimationFrame(simulate);
+				}
 			}
 		};
 
