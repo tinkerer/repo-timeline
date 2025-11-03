@@ -1,5 +1,5 @@
-import { CommitData } from "../types";
 import { getDemoCommits } from "../data/demoCommits";
+import { CommitData } from "../types";
 import { buildEdges, buildFileTree } from "../utils/fileTreeBuilder";
 import { GitHubApiService, type RateLimitInfo } from "./githubApiService";
 import { StorageService } from "./storageService";
@@ -225,8 +225,16 @@ export class GitService {
 				message: commit.message,
 				author: commit.author,
 				date: new Date(commit.date),
-				files: buildFileTree(commit.files.map(f => ({ path: f.path, size: f.size || 100, type: f.type as "file" | "directory" }))),
-				edges: buildEdges(commit.files.map(f => ({ path: f.path, size: f.size || 100 }))),
+				files: buildFileTree(
+					commit.files.map((f) => ({
+						path: f.path,
+						size: f.size || 100,
+						type: f.type as "file" | "directory",
+					})),
+				),
+				edges: buildEdges(
+					commit.files.map((f) => ({ path: f.path, size: f.size || 100 })),
+				),
 			});
 
 			if (onProgress && i % 10 === 0) {

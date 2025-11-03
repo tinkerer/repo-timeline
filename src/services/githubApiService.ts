@@ -1,6 +1,6 @@
 import { CommitData } from "../types";
-import { buildEdges, buildFileTree } from "../utils/fileTreeBuilder";
 import { FileStateTracker } from "../utils/fileStateTracker";
+import { buildEdges, buildFileTree } from "../utils/fileTreeBuilder";
 
 export interface GitHubPR {
 	number: number;

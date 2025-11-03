@@ -18,12 +18,10 @@ export function FileNode3D({ node, onClick }: FileNode3DProps) {
 
 	// Calculate target radius based on LOG of file size
 	// Directories get a fixed size, files scale with their size
-	const targetRadius = node.type === "directory"
-		? 3.0 // Fixed size for directories
-		: Math.max(
-			2.0,
-			Math.min(15, Math.log10(node.size + 1) * 4),
-		);
+	const targetRadius =
+		node.type === "directory"
+			? 3.0 // Fixed size for directories
+			: Math.max(2.0, Math.min(15, Math.log10(node.size + 1) * 4));
 
 	// Initialize animated radius
 	useEffect(() => {

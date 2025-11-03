@@ -1,16 +1,52 @@
-import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
-import { FileNode, FileEdge } from "../types";
-import { FileNode3D } from "./FileNode3D";
+import { Canvas } from "@react-three/fiber";
+import { FileEdge, FileNode } from "../types";
 import { FileEdge3D } from "./FileEdge3D";
+import { FileNode3D } from "./FileNode3D";
 
 export function TestScene() {
 	// Hardcoded test data
 	const testNodes: FileNode[] = [
-		{ id: "src", path: "src", name: "src", size: 0, type: "directory", x: 0, y: 0, z: 0 },
-		{ id: "src/main.ts", path: "src/main.ts", name: "main.ts", size: 1000, type: "file", x: 50, y: 0, z: 0 },
-		{ id: "src/utils", path: "src/utils", name: "utils", size: 0, type: "directory", x: 0, y: 50, z: 0 },
-		{ id: "src/utils/helper.ts", path: "src/utils/helper.ts", name: "helper.ts", size: 500, type: "file", x: 50, y: 50, z: 0 },
+		{
+			id: "src",
+			path: "src",
+			name: "src",
+			size: 0,
+			type: "directory",
+			x: 0,
+			y: 0,
+			z: 0,
+		},
+		{
+			id: "src/main.ts",
+			path: "src/main.ts",
+			name: "main.ts",
+			size: 1000,
+			type: "file",
+			x: 50,
+			y: 0,
+			z: 0,
+		},
+		{
+			id: "src/utils",
+			path: "src/utils",
+			name: "utils",
+			size: 0,
+			type: "directory",
+			x: 0,
+			y: 50,
+			z: 0,
+		},
+		{
+			id: "src/utils/helper.ts",
+			path: "src/utils/helper.ts",
+			name: "helper.ts",
+			size: 500,
+			type: "file",
+			x: 50,
+			y: 50,
+			z: 0,
+		},
 	];
 
 	const testEdges: FileEdge[] = [
@@ -21,7 +57,13 @@ export function TestScene() {
 
 	const nodeMap = new Map(testNodes.map((n) => [n.id, n]));
 
-	console.log("TestScene rendering with:", testNodes.length, "nodes and", testEdges.length, "edges");
+	console.log(
+		"TestScene rendering with:",
+		testNodes.length,
+		"nodes and",
+		testEdges.length,
+		"edges",
+	);
 	console.log("Nodes:", testNodes);
 	console.log("Edges:", testEdges);
 

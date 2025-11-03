@@ -6,13 +6,11 @@
 
 // Export main component
 export { RepoTimeline } from "../components/RepoTimeline";
-
+// Re-export commonly needed types from internal modules
+export type { CommitData, FileEdge, FileNode } from "../types";
 // Export public types
 export type {
-	RepoTimelineProps,
-	PlaybackSpeed,
 	PlaybackDirection,
+	PlaybackSpeed,
+	RepoTimelineProps,
 } from "./types";
-
-// Re-export commonly needed types from internal modules
-export type { CommitData, FileNode, FileEdge } from "../types";
