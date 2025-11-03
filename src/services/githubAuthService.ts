@@ -5,7 +5,7 @@
 
 // This is a public client ID for the repo-timeline app
 // It's safe to include in client-side code as it requires user authorization
-const CLIENT_ID = "Ov23liVGqjJdJGGwrZhy"; // You'll need to register an OAuth app
+const CLIENT_ID = "Ov23liNYN6fntuzLyQbT";
 
 export interface DeviceCodeResponse {
 	device_code: string;
