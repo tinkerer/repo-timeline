@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useReducer, useRef } from "react";
-import type { RateLimitInfo } from "../services/githubApiService";
-import { GitService, LoadProgress } from "../services/gitService";
+import { GitService, type LoadProgress, type RateLimitInfo } from "../services/gitService";
 import type { CommitData } from "../types";
 
 interface RepoDataState {

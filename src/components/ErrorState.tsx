@@ -1,4 +1,4 @@
-import type { RateLimitInfo } from "../services/githubApiService";
+import type { RateLimitInfo } from "../types";
 import { RateLimitDisplay } from "./RateLimitDisplay";
 
 interface ErrorStateProps {

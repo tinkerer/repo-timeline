@@ -43,3 +43,16 @@ export interface FileChange {
 	deletions: number;
 	status: "added" | "modified" | "deleted" | "renamed";
 }
+
+export interface LoadProgress {
+	loaded: number;
+	total: number;
+	percentage: number;
+	message?: string;
+}
+
+export interface RateLimitInfo {
+	remaining: number;
+	limit: number;
+	resetTime: Date;
+}

@@ -1,4 +1,4 @@
-import { CommitData } from "../types";
+import type { CommitData, LoadProgress, RateLimitInfo } from "../types";
 import { FileStateTracker } from "../utils/fileStateTracker";
 import { buildEdges, buildFileTree } from "../utils/fileTreeBuilder";
 
@@ -34,23 +34,10 @@ export interface GitHubPRFile {
 	previous_filename?: string;
 }
 
-export interface LoadProgress {
-	loaded: number;
-	total: number;
-	percentage: number;
-	message: string;
-}
-
 /**
  * Service for fetching repository data from GitHub's REST API
  * Handles rate limiting and incremental loading
  */
-export interface RateLimitInfo {
-	remaining: number;
-	limit: number;
-	resetTime: Date;
-}
-
 export class GitHubApiService {
 	private owner: string;
 	private repo: string;

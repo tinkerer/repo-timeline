@@ -1,7 +1,7 @@
 import { getDemoCommits } from "../data/demoCommits";
-import { CommitData } from "../types";
+import type { CommitData, LoadProgress, RateLimitInfo } from "../types";
 import { buildEdges, buildFileTree } from "../utils/fileTreeBuilder";
-import { GitHubApiService, type RateLimitInfo } from "./githubApiService";
+import { GitHubApiService } from "./githubApiService";
 import { StorageService } from "./storageService";
 
 interface RawCommitData {
@@ -18,12 +18,8 @@ interface RawFileData {
 	type?: string;
 }
 
-export interface LoadProgress {
-	loaded: number;
-	total: number;
-	percentage: number;
-	message?: string;
-}
+// Re-export for convenience
+export type { LoadProgress, RateLimitInfo };
 
 export class GitService {
 	private repoPath: string;
