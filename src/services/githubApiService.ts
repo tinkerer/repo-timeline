@@ -79,6 +79,39 @@ export class GitHubApiService {
 	}
 
 	/**
+	 * Fetch metadata from Cloudflare Worker (fast, all PRs without files)
+	 */
+	async fetchMetadata(): Promise<
+		Array<{
+			number: number;
+			title: string;
+			user: { login: string };
+			merged_at: string;
+		}>
+	> {
+		if (!this.workerUrl) {
+			throw new Error("Worker URL not configured");
+		}
+
+		const url = `${this.workerUrl}/api/repo/${this.owner}/${this.repo}/metadata`;
+		console.log("Fetching metadata from:", url);
+		const response = await fetch(url);
+
+		if (!response.ok) {
+			const error = await response
+				.json()
+				.catch(() => ({ error: "Unknown error" }));
+			throw new Error(
+				error.error || `Worker request failed: ${response.status}`,
+			);
+		}
+
+		const data = await response.json();
+		console.log(`Fetched ${data.length} PRs metadata`);
+		return data;
+	}
+
+	/**
 	 * Fetch data from Cloudflare Worker
 	 */
 	private async fetchFromWorker(): Promise<GitHubPR[]> {

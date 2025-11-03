@@ -22,6 +22,11 @@ interface RepoTimelineProps {
 export function RepoTimeline({ repoPath, onBack }: RepoTimelineProps) {
 	const [commits, setCommits] = useState<CommitData[]>([]);
 	const [currentTime, setCurrentTime] = useState<number>(0); // Timestamp in ms
+	const [timeRange, setTimeRange] = useState<{ start: number; end: number }>({
+		start: 0,
+		end: Date.now(),
+	});
+	const [_totalPRs, setTotalPRs] = useState<number>(0);
 	const [loading, setLoading] = useState(true);
 	const [backgroundLoading, setBackgroundLoading] = useState(false);
 	const [loadProgress, setLoadProgress] = useState<LoadProgress | null>(null);
@@ -37,15 +42,6 @@ export function RepoTimeline({ repoPath, onBack }: RepoTimelineProps) {
 	const playbackTimerRef = useRef<number | null>(null);
 	const gitServiceRef = useRef<GitService | null>(null);
 
-	// Get time bounds from commits
-	const timeRange = {
-		start: commits.length > 0 ? commits[0].date.getTime() : 0,
-		end:
-			commits.length > 0
-				? commits[commits.length - 1].date.getTime()
-				: Date.now(),
-	};
-
 	// Find current commit index based on current time
 	const getCurrentIndex = (time: number): number => {
 		if (commits.length === 0) return 0;
@@ -59,6 +55,29 @@ export function RepoTimeline({ repoPath, onBack }: RepoTimelineProps) {
 	};
 
 	const currentIndex = getCurrentIndex(currentTime);
+
+	// Load metadata first to get time range
+	useEffect(() => {
+		const loadMetadata = async () => {
+			try {
+				const gitService = new GitService(repoPath, undefined, WORKER_URL);
+				const metadata = await gitService.getMetadata();
+
+				setTotalPRs(metadata.prs.length);
+				setTimeRange(metadata.timeRange);
+				setCurrentTime(metadata.timeRange.start);
+
+				console.log(
+					`Loaded metadata: ${metadata.prs.length} PRs, time range: ${new Date(metadata.timeRange.start).toLocaleDateString()} - ${new Date(metadata.timeRange.end).toLocaleDateString()}`,
+				);
+			} catch (err) {
+				console.error("Error loading metadata:", err);
+				// Don't block - continue to load commits
+			}
+		};
+
+		loadMetadata();
+	}, [repoPath]);
 
 	const loadCommits = useCallback(
 		async (forceRefresh = false) => {
@@ -82,10 +101,7 @@ export function RepoTimeline({ repoPath, onBack }: RepoTimelineProps) {
 						setLoadProgress(progress);
 					}, forceRefresh);
 					setCommits(commitsData);
-					// Initialize to first commit's time
-					if (commitsData.length > 0) {
-						setCurrentTime(commitsData[0].date.getTime());
-					}
+					// currentTime is already set from metadata
 					setFromCache(true);
 					setRateLimitedCache(false); // Clear rate limit flag when loading normally
 					setLoading(false);
@@ -106,7 +122,7 @@ export function RepoTimeline({ repoPath, onBack }: RepoTimelineProps) {
 				setBackgroundLoading(true);
 				setLoadProgress(null);
 				setCommits([]);
-				setCurrentTime(0);
+				// currentTime is already set from metadata
 				setFromCache(false);
 
 				try {

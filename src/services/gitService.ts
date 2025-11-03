@@ -40,6 +40,47 @@ export class GitService {
 	}
 
 	/**
+	 * Fetch metadata for all PRs (fast, no files)
+	 */
+	async getMetadata(): Promise<{
+		prs: Array<{
+			number: number;
+			title: string;
+			author: string;
+			date: Date;
+		}>;
+		timeRange: { start: number; end: number };
+	}> {
+		this.githubService = new GitHubApiService(
+			this.repoPath,
+			this.token,
+			this.workerUrl,
+		);
+
+		const metadata = await this.githubService.fetchMetadata();
+
+		const prs = metadata.map((pr) => ({
+			number: pr.number,
+			title: pr.title,
+			author: pr.user.login,
+			date: new Date(pr.merged_at),
+		}));
+
+		// Calculate time range
+		const timestamps = prs.map((pr) => pr.date.getTime());
+		const timeRange = {
+			start: Math.min(...timestamps),
+			end: Math.max(...timestamps),
+		};
+
+		console.log(
+			`Metadata: ${prs.length} PRs from ${new Date(timeRange.start).toLocaleDateString()} to ${new Date(timeRange.end).toLocaleDateString()}`,
+		);
+
+		return { prs, timeRange };
+	}
+
+	/**
 	 * Get a cache key for this repository
 	 */
 	private getCacheKey(): string {
