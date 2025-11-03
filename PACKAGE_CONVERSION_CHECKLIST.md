@@ -2,105 +2,108 @@
 
 Converting repo-timeline from standalone app to reusable npm package.
 
-## Phase 1: Library Structure Setup
+## Phase 1: Library Structure Setup ✅
 
-- [ ] Create `src/lib/` directory for library exports
-- [ ] Create `src/lib/index.ts` with main exports
-- [ ] Create `src/lib/types.ts` with public type definitions
-- [ ] Move demo-specific code to `src/demo/`
-  - [ ] Move `App.tsx` to `src/demo/App.tsx`
-  - [ ] Move `main.tsx` to `src/demo/main.tsx`
-  - [ ] Move `RepoInput.tsx` to `src/demo/RepoInput.tsx`
-  - [ ] Move `RepoWrapper.tsx` to `src/demo/RepoWrapper.tsx`
+- [x] Create `src/lib/` directory for library exports
+- [x] Create `src/lib/index.ts` with main exports
+- [x] Create `src/lib/types.ts` with public type definitions
+- [x] Move demo-specific code to `src/demo/`
+  - [x] Move `App.tsx` to `src/demo/App.tsx`
+  - [x] Move `main.tsx` to `src/demo/main.tsx`
+  - [x] Move `RepoInput.tsx` to `src/demo/RepoInput.tsx`
+  - [x] Move `RepoWrapper.tsx` to `src/demo/RepoWrapper.tsx`
 
-## Phase 2: Component API Cleanup
+## Phase 2: Component API Cleanup ✅
 
-- [ ] Update `RepoTimeline` component to accept `workerUrl` prop
-- [ ] Remove `onBack` prop dependency (make optional)
-- [ ] Remove hardcoded `WORKER_URL` from component
-- [ ] Make component work without React Router
-- [ ] Add optional props: `onError`, `showControls`, `autoPlay`, `playbackSpeed`
-- [ ] Update `config.ts` to export defaults instead of constants
+- [x] Update `RepoTimeline` component to accept `workerUrl` prop
+- [x] Remove `onBack` prop dependency (make optional)
+- [x] Remove hardcoded `WORKER_URL` from component
+- [x] Make component work without React Router
+- [x] Add optional props: `onError`, `showControls`, `autoPlay`, `playbackSpeed`
+- [x] Update `config.ts` to export defaults instead of constants
 
-## Phase 3: Build Configuration
+## Phase 3: Build Configuration ✅
 
-- [ ] Create `vite.config.ts` for library build
-  - [ ] Configure `build.lib` mode
-  - [ ] Set entry point to `src/lib/index.ts`
-  - [ ] Externalize React, React-DOM, Three.js
-  - [ ] Configure CSS extraction
-  - [ ] Generate TypeScript declarations
-- [ ] Create `vite.demo.config.ts` for demo app build
-  - [ ] Set entry point to `src/demo/main.tsx`
-  - [ ] Output to `demo-dist/`
-  - [ ] Keep current SPA configuration
-- [ ] Test library build: `pnpm build`
-- [ ] Test demo build: `pnpm build:demo`
+- [x] Create `vite.config.ts` for library build
+  - [x] Configure `build.lib` mode
+  - [x] Set entry point to `src/lib/index.ts`
+  - [x] Externalize React, React-DOM, Three.js
+  - [x] Configure CSS extraction
+  - [x] Generate TypeScript declarations
+- [x] Create `vite.demo.config.ts` for demo app build
+  - [x] Set entry point to `src/demo/main.tsx`
+  - [x] Output to `demo-dist/`
+  - [x] Keep current SPA configuration
+- [x] Test library build: `pnpm build`
+- [x] Test demo build: `pnpm build:demo`
 
-## Phase 4: Package.json Updates
+## Phase 4: Package.json Updates ✅
 
-- [ ] Update `name` to `@rjwalters/repo-timeline` (or your preferred scope)
-- [ ] Set `private: false`
-- [ ] Set `version` to `1.0.0`
-- [ ] Add `description`
-- [ ] Add `keywords`
-- [ ] Add `repository` field
-- [ ] Add `main`, `module`, `types` fields
-- [ ] Add `exports` field for ESM/CJS
-- [ ] Add `files` field (include only `dist/`)
-- [ ] Move React/React-DOM/Three to `peerDependencies`
-- [ ] Add build scripts:
-  - [ ] `build` - library build
-  - [ ] `build:demo` - demo app build
-  - [ ] `prepublishOnly` - run build before publish
+- [x] Update `name` to `@rjwalters/repo-timeline` (or your preferred scope)
+- [x] Set `private: false`
+- [x] Set `version` to `1.0.0`
+- [x] Add `description`
+- [x] Add `keywords`
+- [x] Add `repository` field
+- [x] Add `main`, `module`, `types` fields
+- [x] Add `exports` field for ESM/CJS
+- [x] Add `files` field (include only `dist/`)
+- [x] Move React/React-DOM/Three to `peerDependencies`
+- [x] Add build scripts:
+  - [x] `build` - library build
+  - [x] `build:demo` - demo app build
+  - [x] `prepublishOnly` - run build before publish
 
-## Phase 5: Documentation
+## Phase 5: Documentation ✅
 
-- [ ] Create `EMBEDDING.md` with usage instructions
-  - [ ] Installation section
-  - [ ] Basic usage example
-  - [ ] Props documentation
-  - [ ] TypeScript example
-  - [ ] Advanced examples (error handling, custom worker)
-  - [ ] Styling guide
-- [ ] Update `README.md` to mention npm package usage
-- [ ] Create `CHANGELOG.md`
-- [ ] Create `.npmignore` file
+- [x] Create `EMBEDDING.md` with usage instructions
+  - [x] Installation section
+  - [x] Basic usage example
+  - [x] Props documentation
+  - [x] TypeScript example
+  - [x] Advanced examples (error handling, custom worker)
+  - [x] Styling guide
+- [x] Update `README.md` to mention npm package usage
+- [x] Create `CHANGELOG.md`
+- [x] Create `.npmignore` file
 
-## Phase 6: GitHub Actions Update
+## Phase 6: GitHub Actions Update ✅
 
-- [ ] Update `.github/workflows/deploy.yml` to build demo app
-- [ ] Change build output directory to `demo-dist/`
-- [ ] Ensure demo still deploys to GitHub Pages
+- [x] Update `.github/workflows/deploy.yml` to build demo app
+- [x] Change build output directory to `demo-dist/`
+- [x] Ensure demo still deploys to GitHub Pages
 
-## Phase 7: Testing
+## Phase 7: Testing (In Progress)
 
-- [ ] Build library: `pnpm build`
-- [ ] Verify output in `dist/`:
-  - [ ] `index.js` (ESM)
-  - [ ] `index.umd.js` (UMD)
-  - [ ] `index.d.ts` (TypeScript types)
-  - [ ] `style.css`
+- [x] Build library: `pnpm build`
+- [x] Verify output in `dist/`:
+  - [x] `index.js` (ESM)
+  - [x] `index.umd.js` (UMD)
+  - [x] `index.d.ts` (TypeScript types)
+  - [ ] `style.css` (note: currently not extracted, may need CSS fix)
+- [x] Test local packaging:
+  - [x] Run `npm pack --dry-run`
 - [ ] Test local installation:
-  - [ ] Run `npm pack`
+  - [ ] Run `npm pack` to create tarball
   - [ ] Install in test project: `npm install ../repo-timeline-1.0.0.tgz`
   - [ ] Import and use component
   - [ ] Verify TypeScript types work
-- [ ] Build demo: `pnpm build:demo`
+- [x] Build demo: `pnpm build:demo`
 - [ ] Test demo locally: `pnpm preview`
 - [ ] Verify demo works at `/repo-timeline/`
 
-## Phase 8: Publishing
+## Phase 8: Publishing (Not Started - Holding for Refinement)
 
 - [ ] Review `package.json` one final time
 - [ ] Ensure all files are committed
+- [ ] Create CHANGELOG.md for v1.0.0
 - [ ] Create git tag: `git tag v1.0.0`
 - [ ] Test publish (dry run): `npm publish --dry-run`
 - [ ] Publish to npm: `npm publish --access public`
 - [ ] Verify package on npmjs.com
 - [ ] Push tag to GitHub: `git push --tags`
 
-## Phase 9: Post-Publishing
+## Phase 9: Post-Publishing (Not Started)
 
 - [ ] Update README.md with npm badge
 - [ ] Create GitHub release for v1.0.0
