@@ -38,6 +38,38 @@ export class GitService {
 	}
 
 	/**
+	 * Get repository status from worker (GitHub state + cache state)
+	 */
+	async getRepoStatus(): Promise<{
+		github: {
+			totalPRs: number;
+			firstPR: number | null;
+			lastPR: number | null;
+			oldestMerge: string | null;
+			newestMerge: string | null;
+		};
+		cache: {
+			cachedPRs: number;
+			coveragePercent: number;
+			ageSeconds: number | null;
+			lastPRNumber: number | null;
+		};
+		recommendation: "ready" | "partial" | "fetching";
+	} | null> {
+		if (!this.workerUrl) {
+			return null; // Status only available when using worker
+		}
+
+		this.githubService = new GitHubApiService(
+			this.repoPath,
+			this.token,
+			this.workerUrl,
+		);
+
+		return this.githubService.fetchRepoStatus();
+	}
+
+	/**
 	 * Fetch metadata for all PRs (fast, no files)
 	 */
 	async getMetadata(): Promise<{

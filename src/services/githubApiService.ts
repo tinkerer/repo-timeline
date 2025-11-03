@@ -102,6 +102,49 @@ export class GitHubApiService {
 	}
 
 	/**
+	 * Fetch repository status from Cloudflare Worker
+	 */
+	async fetchRepoStatus(): Promise<{
+		github: {
+			totalPRs: number;
+			firstPR: number | null;
+			lastPR: number | null;
+			oldestMerge: string | null;
+			newestMerge: string | null;
+		};
+		cache: {
+			cachedPRs: number;
+			coveragePercent: number;
+			ageSeconds: number | null;
+			lastPRNumber: number | null;
+		};
+		recommendation: "ready" | "partial" | "fetching";
+	}> {
+		if (!this.workerUrl) {
+			throw new Error("Worker URL required for status fetch");
+		}
+
+		const url = `${this.workerUrl}/api/repo/${this.owner}/${this.repo}/status`;
+		console.log("Fetching status from:", url);
+		const response = await fetch(url);
+
+		if (!response.ok) {
+			const error = await response
+				.json()
+				.catch(() => ({ error: "Unknown error" }));
+			throw new Error(
+				error.error || `Status request failed: ${response.status}`,
+			);
+		}
+
+		const data = await response.json();
+		console.log(
+			`Repository status: ${data.github.totalPRs} total PRs, ${data.cache.cachedPRs} cached (${data.cache.coveragePercent}%)`,
+		);
+		return data;
+	}
+
+	/**
 	 * Fetch data from Cloudflare Worker
 	 */
 	private async fetchFromWorker(): Promise<GitHubPR[]> {

@@ -88,6 +88,22 @@ export default {
 			);
 		}
 
+		// API endpoint: /api/repo/:owner/:repo/status (repo and cache status)
+		const statusMatch = url.pathname.match(
+			/^\/api\/repo\/([^/]+)\/([^/]+)\/status$/,
+		);
+		if (statusMatch) {
+			const [, owner, repo] = statusMatch;
+			return handleStatusRequest(
+				env,
+				ctx,
+				tokenRotator.getNextToken(),
+				owner,
+				repo,
+				corsHeaders,
+			);
+		}
+
 		// API endpoint: /api/repo/:owner/:repo/metadata (PR list without files)
 		const metadataMatch = url.pathname.match(
 			/^\/api\/repo\/([^/]+)\/([^/]+)\/metadata$/,
@@ -185,6 +201,99 @@ export default {
 		}
 	},
 };
+
+/**
+ * Handle status request - returns repo info and cache status
+ */
+async function handleStatusRequest(
+	env: Env,
+	ctx: ExecutionContext,
+	token: string,
+	owner: string,
+	repo: string,
+	corsHeaders: Record<string, string>,
+): Promise<Response> {
+	const fullName = `${owner}/${repo}`;
+
+	try {
+		// Fetch metadata from GitHub (fast - just PR counts)
+		const allPRs = await fetchAllMergedPRsMetadata(token, owner, repo);
+		const totalPRs = allPRs.length;
+
+		// Check cache status
+		const cached = await getCachedData(env.DB, fullName);
+		const cachedPRCount = cached ? cached.prs.length : 0;
+		const cacheAge = cached ? Date.now() / 1000 - cached.lastUpdated : null;
+		const coveragePercent = totalPRs > 0 ? (cachedPRCount / totalPRs) * 100 : 0;
+
+		// If we have less than 20% cached, trigger opportunistic collection
+		const targetCoverage = 0.2;
+		if (coveragePercent < targetCoverage * 100 && totalPRs > 0) {
+			const targetPRCount = Math.ceil(totalPRs * targetCoverage);
+			const prsToFetch = Math.min(targetPRCount - cachedPRCount, 45); // Stay under subrequest limit
+
+			if (prsToFetch > 0) {
+				console.log(
+					`Coverage is ${coveragePercent.toFixed(1)}%, triggering fetch of ${prsToFetch} PRs`,
+				);
+				ctx.waitUntil(
+					fetchAndCachePartialRepo(
+						env.DB,
+						token,
+						owner,
+						repo,
+						cached?.lastPrNumber || 0,
+						prsToFetch,
+					),
+				);
+			}
+		}
+
+		const status = {
+			owner,
+			repo,
+			github: {
+				totalPRs,
+				firstPR: totalPRs > 0 ? allPRs[0].number : null,
+				lastPR: totalPRs > 0 ? allPRs[totalPRs - 1].number : null,
+				oldestMerge:
+					totalPRs > 0 ? allPRs[0].merged_at : null,
+				newestMerge:
+					totalPRs > 0 ? allPRs[totalPRs - 1].merged_at : null,
+			},
+			cache: {
+				cachedPRs: cachedPRCount,
+				coveragePercent: Math.round(coveragePercent * 10) / 10,
+				ageSeconds: cacheAge ? Math.round(cacheAge) : null,
+				lastPRNumber: cached?.lastPrNumber || null,
+			},
+			recommendation:
+				coveragePercent >= 20
+					? "ready"
+					: coveragePercent > 0
+						? "partial"
+						: "fetching",
+		};
+
+		return new Response(JSON.stringify(status), {
+			headers: {
+				...corsHeaders,
+				"Content-Type": "application/json",
+			},
+		});
+	} catch (error) {
+		console.error("Error fetching status:", error);
+		return new Response(
+			JSON.stringify({
+				error: error instanceof Error ? error.message : "Internal server error",
+			}),
+			{
+				status: 500,
+				headers: { ...corsHeaders, "Content-Type": "application/json" },
+			},
+		);
+	}
+}
 
 /**
  * Handle metadata-only request (all PRs without files)
@@ -356,6 +465,43 @@ async function fetchAndCacheRepo(
 	await storeRepoData(db, owner, repo, prs);
 
 	return prs;
+}
+
+/**
+ * Fetch a specific number of PRs and cache them (for opportunistic collection)
+ */
+async function fetchAndCachePartialRepo(
+	db: D1Database,
+	token: string,
+	owner: string,
+	repo: string,
+	fromPRNumber: number,
+	maxPRs: number,
+): Promise<void> {
+	try {
+		console.log(
+			`Opportunistic fetch: ${maxPRs} PRs for ${owner}/${repo} from PR #${fromPRNumber + 1}`,
+		);
+
+		// Fetch specific number of PRs
+		const prs = await fetchMergedPRs(
+			token,
+			owner,
+			repo,
+			fromPRNumber > 0 ? fromPRNumber + 1 : undefined,
+			Math.ceil(maxPRs / 100), // Calculate pages needed
+		);
+
+		// Limit to requested count
+		const prsToStore = prs.slice(0, maxPRs);
+
+		if (prsToStore.length > 0) {
+			console.log(`Caching ${prsToStore.length} PRs opportunistically`);
+			await storeRepoData(db, owner, repo, prsToStore, fromPRNumber > 0);
+		}
+	} catch (error) {
+		console.error("Error in opportunistic fetch:", error);
+	}
 }
 
 /**

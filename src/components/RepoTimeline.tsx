@@ -11,6 +11,7 @@ import { ErrorState } from "./ErrorState";
 import { LoadingState } from "./LoadingState";
 import { RateLimitDisplay } from "./RateLimitDisplay";
 import { RepoGraph3D } from "./RepoGraph3D";
+import { RepoStatusBanner } from "./RepoStatusBanner";
 import {
 	PlaybackDirection,
 	PlaybackSpeed,
@@ -40,6 +41,7 @@ export function RepoTimeline({
 		rateLimit,
 		fromCache,
 		rateLimitedCache,
+		repoStatus,
 		loadCommits,
 	} = useRepoData({
 		repoPath,
@@ -121,6 +123,17 @@ export function RepoTimeline({
 
 	return (
 		<div className="w-full h-full relative">
+			{/* Repository Status Banner */}
+			{repoStatus && (
+				<div className="absolute top-20 left-4 right-4 z-10 max-w-2xl">
+					<RepoStatusBanner
+						github={repoStatus.github}
+						cache={repoStatus.cache}
+						recommendation={repoStatus.recommendation}
+					/>
+				</div>
+			)}
+
 			{/* 3D Visualization */}
 			<div className="w-full h-full">
 				<RepoGraph3D

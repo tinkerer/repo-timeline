@@ -50,6 +50,8 @@
 		"lint:fix": "biome check --write src",
 		"format": "biome format --write .",
 		"preview": "vite preview --config vite.demo.config.ts",
+		"size": "size-limit",
+		"size:why": "size-limit --why",
 		"prepublishOnly": "pnpm build"
 	},
 	"peerDependencies": {
@@ -62,13 +64,13 @@
 	"dependencies": {
 		"d3-force-3d": "^3.0.5",
 		"lucide-react": "^0.552.0",
-		"react-router-dom": "^7.9.5",
-		"simple-git": "^3.22.0"
+		"react-router-dom": "^7.9.5"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.3.2",
 		"@react-three/drei": "^9.92.0",
 		"@react-three/fiber": "^8.15.0",
+		"@size-limit/preset-small-lib": "^11.2.0",
 		"@types/react": "^18.2.43",
 		"@types/react-dom": "^18.2.17",
 		"@types/three": "^0.160.0",

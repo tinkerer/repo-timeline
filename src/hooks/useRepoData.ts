@@ -6,6 +6,23 @@ import {
 } from "../services/gitService";
 import type { CommitData } from "../types";
 
+interface RepoStatus {
+	github: {
+		totalPRs: number;
+		firstPR: number | null;
+		lastPR: number | null;
+		oldestMerge: string | null;
+		newestMerge: string | null;
+	};
+	cache: {
+		cachedPRs: number;
+		coveragePercent: number;
+		ageSeconds: number | null;
+		lastPRNumber: number | null;
+	};
+	recommendation: "ready" | "partial" | "fetching";
+}
+
 interface RepoDataState {
 	commits: CommitData[];
 	currentTime: number;
@@ -18,6 +35,7 @@ interface RepoDataState {
 	rateLimit: RateLimitInfo | null;
 	fromCache: boolean;
 	rateLimitedCache: boolean;
+	repoStatus: RepoStatus | null;
 }
 
 type RepoDataAction =
@@ -33,6 +51,7 @@ type RepoDataAction =
 	| { type: "SET_RATE_LIMIT"; rateLimit: RateLimitInfo | null }
 	| { type: "SET_FROM_CACHE"; fromCache: boolean }
 	| { type: "SET_RATE_LIMITED_CACHE"; rateLimitedCache: boolean }
+	| { type: "SET_REPO_STATUS"; status: RepoStatus | null }
 	| { type: "RESET_COMMITS" };
 
 function repoDataReducer(
@@ -103,6 +122,8 @@ function repoDataReducer(
 			return { ...state, fromCache: action.fromCache };
 		case "SET_RATE_LIMITED_CACHE":
 			return { ...state, rateLimitedCache: action.rateLimitedCache };
+		case "SET_REPO_STATUS":
+			return { ...state, repoStatus: action.status };
 		case "RESET_COMMITS":
 			return { ...state, commits: [] };
 		default:
@@ -135,9 +156,34 @@ export function useRepoData({
 		rateLimit: null,
 		fromCache: false,
 		rateLimitedCache: false,
+		repoStatus: null,
 	});
 
 	const gitServiceRef = useRef<GitService | null>(null);
+
+	// Fetch repo status when using worker (fast check)
+	useEffect(() => {
+		const fetchStatus = async () => {
+			if (!workerUrl) return;
+
+			try {
+				const gitService = new GitService(repoPath, undefined, workerUrl);
+				const status = await gitService.getRepoStatus();
+
+				if (status) {
+					dispatch({ type: "SET_REPO_STATUS", status });
+					console.log(
+						`Repository status: ${status.github.totalPRs} PRs, ${status.cache.cachedPRs} cached (${status.cache.coveragePercent}%) - ${status.recommendation}`,
+					);
+				}
+			} catch (err) {
+				console.error("Error fetching repo status:", err);
+				// Non-blocking - continue without status
+			}
+		};
+
+		fetchStatus();
+	}, [repoPath, workerUrl]);
 
 	// Load metadata first to get time range
 	useEffect(() => {
