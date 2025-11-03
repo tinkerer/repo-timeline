@@ -34,6 +34,7 @@ export function RepoTimeline({ repoPath, onBack }: RepoTimelineProps) {
 	const [playbackDirection, setPlaybackDirection] =
 		useState<PlaybackDirection>("forward");
 	const [fromCache, setFromCache] = useState(false);
+	const [rateLimitedCache, setRateLimitedCache] = useState(false);
 	const playbackTimerRef = useRef<number | null>(null);
 	const gitServiceRef = useRef<GitService | null>(null);
 
@@ -57,6 +58,7 @@ export function RepoTimeline({ repoPath, onBack }: RepoTimelineProps) {
 					setCommits(commitsData);
 					setCurrentIndex(0);
 					setFromCache(true);
+					setRateLimitedCache(false); // Clear rate limit flag when loading normally
 					setLoading(false);
 					setError(null);
 					setRateLimit(gitService.getRateLimitInfo());
@@ -66,6 +68,7 @@ export function RepoTimeline({ repoPath, onBack }: RepoTimelineProps) {
 						err instanceof Error ? err.message : "Failed to load repository",
 					);
 					setLoading(false);
+					setRateLimitedCache(false);
 					setRateLimit(gitService.getRateLimitInfo());
 				}
 			} else {
@@ -90,9 +93,38 @@ export function RepoTimeline({ repoPath, onBack }: RepoTimelineProps) {
 					);
 				} catch (err) {
 					console.error("Error loading commits:", err);
-					setError(
-						err instanceof Error ? err.message : "Failed to load repository",
-					);
+
+					// If we hit an error (like rate limiting), try to load from cache
+					if (cacheInfo.exists) {
+						console.log("Falling back to cached data due to error");
+						try {
+							const cachedCommits = await gitService.getCommitHistory(
+								() => {}, // no progress updates needed
+								false, // don't force refresh
+							);
+							setCommits(cachedCommits);
+							setFromCache(true);
+							setRateLimitedCache(true); // Mark that we're using stale cache due to rate limit
+							setError(null); // Clear error since we have cached data
+							// Show a warning instead of error
+							console.warn(
+								"Using cached data due to API error:",
+								err instanceof Error ? err.message : "Unknown error",
+							);
+						} catch (cacheErr) {
+							// If cache also fails, show the original error
+							setError(
+								err instanceof Error ? err.message : "Failed to load repository",
+							);
+							setRateLimitedCache(false);
+						}
+					} else {
+						// No cache available, show error
+						setError(
+							err instanceof Error ? err.message : "Failed to load repository",
+						);
+						setRateLimitedCache(false);
+					}
 					setRateLimit(gitService.getRateLimitInfo());
 				} finally {
 					setBackgroundLoading(false);
@@ -330,7 +362,12 @@ export function RepoTimeline({ repoPath, onBack }: RepoTimelineProps) {
 						<h1 className="text-xl font-bold mb-1">Repo Timeline Visualizer</h1>
 						<div className="text-sm text-gray-400">{repoPath}</div>
 						<div className="flex items-center gap-3 mt-2">
-							{fromCache && !backgroundLoading && (
+							{rateLimitedCache && (
+								<div className="text-xs text-yellow-400 bg-yellow-900 bg-opacity-20 px-2 py-1 rounded border border-yellow-600">
+									⚠ Using cached data (API rate limited)
+								</div>
+							)}
+							{fromCache && !backgroundLoading && !rateLimitedCache && (
 								<div className="text-xs text-blue-400">
 									📦 Loaded from cache
 								</div>
