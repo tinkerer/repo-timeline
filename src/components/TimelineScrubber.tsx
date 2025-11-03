@@ -93,25 +93,20 @@ export function TimelineScrubber({
 								{currentCommit.date.toLocaleDateString()}
 							</div>
 						</div>
-						<div className="flex flex-col items-end gap-1">
-							{/* Date/Time Clock */}
-							{isPlaying && (
-								<div className="text-lg font-mono text-blue-400 tabular-nums">
-									{currentCommit.date.toLocaleDateString("en-US", {
-										month: "short",
-										day: "numeric",
-										year: "numeric",
-									})}{" "}
-									{currentCommit.date.toLocaleTimeString("en-US", {
-										hour: "2-digit",
-										minute: "2-digit",
-									})}
-								</div>
-							)}
-							<div className="text-sm text-gray-400">
-								Commit {currentIndex + 1} of {commits.length}
+						{/* Date/Time Clock */}
+						{isPlaying && (
+							<div className="text-lg font-mono text-blue-400 tabular-nums">
+								{currentCommit.date.toLocaleDateString("en-US", {
+									month: "short",
+									day: "numeric",
+									year: "numeric",
+								})}{" "}
+								{currentCommit.date.toLocaleTimeString("en-US", {
+									hour: "2-digit",
+									minute: "2-digit",
+								})}
 							</div>
-						</div>
+						)}
 					</div>
 				</div>
 
@@ -224,6 +219,10 @@ export function TimelineScrubber({
 					<div>
 						<span className="text-gray-400">Files:</span>{" "}
 						{currentCommit.files.length}
+					</div>
+					<div>
+						<span className="text-gray-400">Commit:</span> {currentIndex + 1} of{" "}
+						{commits.length}
 					</div>
 					<div>
 						<span className="text-gray-400">Hash:</span>{" "}
