@@ -1,5 +1,5 @@
 import { ArrowLeft, Loader2, RefreshCw } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { TEST_MODE } from "../config";
 import { usePlaybackTimer } from "../hooks/usePlaybackTimer";
 import { useRepoData } from "../hooks/useRepoData";
@@ -70,14 +70,14 @@ export function RepoTimeline({
 		onPlayingChange: setIsPlaying,
 	});
 
-	const handlePlayPause = () => {
+	const handlePlayPause = useCallback(() => {
 		setIsPlaying(!isPlaying);
-	};
+	}, [isPlaying]);
 
-	const handleNodeClick = (node: FileNode) => {
+	const handleNodeClick = useCallback((node: FileNode) => {
 		setSelectedNode(node);
 		console.log("Selected node:", node);
-	};
+	}, []);
 
 	if (loading) {
 		return <LoadingState loadProgress={loadProgress} fromCache={fromCache} />;

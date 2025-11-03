@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { CommitData } from "../../types";
 
 interface CommitInfoProps {
@@ -6,7 +7,7 @@ interface CommitInfoProps {
 	isPlaying: boolean;
 }
 
-export function CommitInfo({
+export const CommitInfo = memo(function CommitInfo({
 	commit,
 	currentTime,
 	isPlaying,
@@ -38,4 +39,4 @@ export function CommitInfo({
 			</div>
 		</div>
 	);
-}
+});

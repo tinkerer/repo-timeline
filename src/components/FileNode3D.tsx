@@ -1,6 +1,6 @@
 import { Sphere, Text } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import { useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { FileNode } from "../types";
 
@@ -9,7 +9,7 @@ interface FileNode3DProps {
 	onClick?: (node: FileNode) => void;
 }
 
-export function FileNode3D({ node, onClick }: FileNode3DProps) {
+export const FileNode3D = memo(function FileNode3D({ node, onClick }: FileNode3DProps) {
 	const meshRef = useRef<THREE.Mesh>(null);
 	const [transitionOpacity, setTransitionOpacity] = useState(1);
 	const [animatedRadius, setAnimatedRadius] = useState(0);
@@ -109,11 +109,11 @@ export function FileNode3D({ node, onClick }: FileNode3DProps) {
 		}
 	});
 
-	const handleClick = () => {
+	const handleClick = useCallback(() => {
 		if (onClick) {
 			onClick(node);
 		}
-	};
+	}, [onClick, node]);
 
 	// Calculate final color by blending base color with transition color
 	const finalColor =
@@ -182,4 +182,4 @@ export function FileNode3D({ node, onClick }: FileNode3DProps) {
 			)}
 		</group>
 	);
-}
+});

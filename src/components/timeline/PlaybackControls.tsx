@@ -6,6 +6,7 @@ import {
 	SkipBack,
 	SkipForward,
 } from "lucide-react";
+import { memo } from "react";
 import type { PlaybackDirection, PlaybackSpeed } from "../../lib/types";
 
 interface PlaybackControlsProps {
@@ -23,7 +24,7 @@ interface PlaybackControlsProps {
 	onSkipToEnd: () => void;
 }
 
-export function PlaybackControls({
+export const PlaybackControls = memo(function PlaybackControls({
 	isPlaying,
 	onPlayPause,
 	playbackSpeed,
@@ -126,4 +127,4 @@ export function PlaybackControls({
 			</button>
 		</div>
 	);
-}
+});

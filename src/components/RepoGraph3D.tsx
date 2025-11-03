@@ -1,6 +1,6 @@
 import { OrbitControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FileEdge, FileNode } from "../types";
 import { ForceSimulation } from "../utils/forceSimulation";
 import { FileEdge3D } from "./FileEdge3D";
@@ -131,7 +131,10 @@ export function RepoGraph3D({ nodes, edges, onNodeClick }: RepoGraph3DProps) {
 		};
 	}, []);
 
-	const nodeMap = new Map(simulationNodes.map((n) => [n.id, n]));
+	const nodeMap = useMemo(
+		() => new Map(simulationNodes.map((n) => [n.id, n])),
+		[simulationNodes],
+	);
 
 	if (contextLost) {
 		return (

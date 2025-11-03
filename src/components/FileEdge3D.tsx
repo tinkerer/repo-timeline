@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import * as THREE from "three";
 import { FileEdge, FileNode } from "../types";
 
@@ -7,7 +7,7 @@ interface FileEdge3DProps {
 	nodes: Map<string, FileNode>;
 }
 
-export function FileEdge3D({ edge, nodes }: FileEdge3DProps) {
+export const FileEdge3D = memo(function FileEdge3D({ edge, nodes }: FileEdge3DProps) {
 	const source = nodes.get(edge.source);
 	const target = nodes.get(edge.target);
 
@@ -70,4 +70,4 @@ export function FileEdge3D({ edge, nodes }: FileEdge3DProps) {
 			<meshBasicMaterial color={color} opacity={0.8} transparent />
 		</mesh>
 	);
-}
+});
