@@ -191,6 +191,10 @@ export function useRepoData({
 				}
 			} catch (err) {
 				console.error("Error fetching repo status:", err);
+				console.error(
+					"Error details:",
+					err instanceof Error ? err.message : String(err),
+				);
 				// Non-blocking - continue without status
 			}
 		};
@@ -201,9 +205,17 @@ export function useRepoData({
 	// Load metadata first to get time range
 	useEffect(() => {
 		const loadMetadata = async () => {
+			console.log(
+				"[useRepoData] Loading metadata for:",
+				repoPath,
+				"workerUrl:",
+				workerUrl,
+			);
 			try {
 				const gitService = new GitService(repoPath, undefined, workerUrl);
+				console.log("[useRepoData] GitService created, fetching metadata...");
 				const metadata = await gitService.getMetadata();
+				console.log("[useRepoData] Metadata received:", metadata);
 
 				dispatch({ type: "SET_TOTAL_PRS", count: metadata.prs.length });
 				dispatch({ type: "SET_TIME_RANGE", range: metadata.timeRange });
@@ -223,6 +235,12 @@ export function useRepoData({
 
 	const loadCommits = useCallback(
 		async (forceRefresh = false) => {
+			console.log(
+				"[useRepoData] loadCommits called - forceRefresh:",
+				forceRefresh,
+				"repoPath:",
+				repoPath,
+			);
 			const gitService = new GitService(
 				repoPath,
 				undefined, // No token needed - using worker
@@ -233,9 +251,16 @@ export function useRepoData({
 			// Check if data was from cache
 			const cacheInfo = gitService.getCacheInfo();
 			const hasCache = cacheInfo.exists && !forceRefresh;
+			console.log(
+				"[useRepoData] Cache check - hasCache:",
+				hasCache,
+				"cacheInfo:",
+				cacheInfo,
+			);
 
 			if (hasCache) {
 				// Load from cache immediately - no loading state
+				console.log("[useRepoData] Loading from cache...");
 				dispatch({ type: "SET_LOADING", loading: true });
 				dispatch({ type: "SET_LOAD_PROGRESS", progress: null });
 				try {
@@ -268,6 +293,9 @@ export function useRepoData({
 				}
 			} else {
 				// Incremental loading - show visualization as data arrives
+				console.log(
+					"[useRepoData] No cache, loading incrementally from API...",
+				);
 				dispatch({ type: "SET_LOADING", loading: false });
 				dispatch({ type: "SET_BACKGROUND_LOADING", loading: true });
 				dispatch({ type: "SET_LOAD_PROGRESS", progress: null });

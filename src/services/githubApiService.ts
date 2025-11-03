@@ -126,7 +126,14 @@ export class GitHubApiService {
 
 		const url = `${this.workerUrl}/api/repo/${this.owner}/${this.repo}/status`;
 		console.log("Fetching status from:", url);
-		const response = await fetch(url);
+
+		// Add 3 second timeout to prevent hanging
+		const controller = new AbortController();
+		const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+		const response = await fetch(url, { signal: controller.signal });
+		clearTimeout(timeoutId);
+		console.log("Response status:", response.status, response.statusText);
 
 		if (!response.ok) {
 			const error = await response
@@ -138,10 +145,19 @@ export class GitHubApiService {
 		}
 
 		const data = await response.json();
+		console.log("fetchRepoStatus response data:", data);
+
+		// Extract only the status fields (API returns owner/repo too)
+		const status = {
+			github: data.github,
+			cache: data.cache,
+			recommendation: data.recommendation,
+		};
+
 		console.log(
-			`Repository status: ${data.github.totalPRs} total PRs, ${data.cache.cachedPRs} cached (${data.cache.coveragePercent}%)`,
+			`Repository status: ${status.github.totalPRs} total PRs, ${status.cache.cachedPRs} cached (${status.cache.coveragePercent}%)`,
 		);
-		return data;
+		return status;
 	}
 
 	/**
