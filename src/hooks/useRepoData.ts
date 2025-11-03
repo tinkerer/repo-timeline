@@ -164,7 +164,11 @@ export function useRepoData({
 	// Fetch repo status when using worker (fast check)
 	useEffect(() => {
 		const fetchStatus = async () => {
-			if (!workerUrl) return;
+			console.log("fetchStatus called - workerUrl:", workerUrl, "repoPath:", repoPath);
+			if (!workerUrl) {
+				console.warn("No workerUrl provided, skipping status fetch");
+				return;
+			}
 
 			try {
 				const gitService = new GitService(repoPath, undefined, workerUrl);

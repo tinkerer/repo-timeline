@@ -127,7 +127,7 @@ export function RepoTimeline({
 		<div className="w-full h-full relative">
 			{/* Repository Status Banner */}
 			{repoStatus && (
-				<div className="absolute top-0 left-0 right-0 z-10">
+				<div className="absolute bottom-0 left-0 right-0 z-10">
 					<RepoStatusBanner
 						github={repoStatus.github}
 						cache={repoStatus.cache}
