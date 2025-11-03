@@ -121,11 +121,13 @@ export function RepoTimeline({
 					edges: [],
 				};
 
+	console.log("RepoTimeline repoStatus:", repoStatus);
+
 	return (
 		<div className="w-full h-full relative">
 			{/* Repository Status Banner */}
 			{repoStatus && (
-				<div className="absolute top-20 left-4 right-4 z-10 max-w-2xl">
+				<div className="absolute top-0 left-0 right-0 z-10">
 					<RepoStatusBanner
 						github={repoStatus.github}
 						cache={repoStatus.cache}

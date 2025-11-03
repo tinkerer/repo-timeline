@@ -20,6 +20,12 @@ export function RepoStatusBanner({
 	cache,
 	recommendation,
 }: RepoStatusBannerProps) {
+	console.log("RepoStatusBanner render:", {
+		github,
+		cache,
+		recommendation,
+	});
+
 	const statusColors = {
 		ready: "bg-green-900 border-green-600 text-green-200",
 		partial: "bg-yellow-900 border-yellow-600 text-yellow-200",
@@ -39,42 +45,38 @@ export function RepoStatusBanner({
 	};
 
 	return (
-		<div
-			className={`mb-4 p-4 rounded-lg border ${statusColors[recommendation]}`}
-		>
-			<div className="flex items-center justify-between">
-				<div className="flex-1">
-					<div className="flex items-center gap-2 mb-2">
-						<span className="text-2xl">{statusIcons[recommendation]}</span>
-						<span className="font-semibold">
-							{statusMessages[recommendation]}
-						</span>
-					</div>
-					<div className="text-sm space-y-1">
-						<div>
-							<strong>GitHub:</strong> {github.totalPRs} total merged PRs
-							{github.firstPR && github.lastPR && (
-								<span className="ml-2 text-xs opacity-75">
-									(#{github.firstPR} - #{github.lastPR})
-								</span>
-							)}
-						</div>
-						<div>
-							<strong>Cached:</strong> {cache.cachedPRs} PRs (
-							{cache.coveragePercent}%)
-							{cache.ageSeconds && (
-								<span className="ml-2 text-xs opacity-75">
-									• Updated {Math.round(cache.ageSeconds / 60)} min ago
-								</span>
-							)}
-						</div>
-						{github.oldestMerge && github.newestMerge && (
-							<div className="text-xs opacity-75">
-								Timeline: {new Date(github.oldestMerge).toLocaleDateString()} -{" "}
-								{new Date(github.newestMerge).toLocaleDateString()}
-							</div>
+		<div className={`py-2 px-4 border-b ${statusColors[recommendation]}`}>
+			<div className="flex items-center gap-4 text-sm">
+				<div className="flex items-center gap-2">
+					<span className="text-lg">{statusIcons[recommendation]}</span>
+					<span className="font-semibold">
+						{statusMessages[recommendation]}
+					</span>
+				</div>
+				<div className="flex items-center gap-4 flex-wrap">
+					<div>
+						<strong>GitHub:</strong> {github.totalPRs} PRs
+						{github.firstPR && github.lastPR && (
+							<span className="ml-1 text-xs opacity-75">
+								(#{github.firstPR} - #{github.lastPR})
+							</span>
 						)}
 					</div>
+					<div>
+						<strong>Cached:</strong> {cache.cachedPRs} PRs (
+						{cache.coveragePercent}%)
+						{cache.ageSeconds && (
+							<span className="ml-1 text-xs opacity-75">
+								• {Math.round(cache.ageSeconds / 60)}m ago
+							</span>
+						)}
+					</div>
+					{github.oldestMerge && github.newestMerge && (
+						<div className="text-xs opacity-75">
+							{new Date(github.oldestMerge).toLocaleDateString()} -{" "}
+							{new Date(github.newestMerge).toLocaleDateString()}
+						</div>
+					)}
 				</div>
 			</div>
 		</div>

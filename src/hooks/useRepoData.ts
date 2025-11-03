@@ -168,13 +168,17 @@ export function useRepoData({
 
 			try {
 				const gitService = new GitService(repoPath, undefined, workerUrl);
+				console.log("Fetching repo status for:", repoPath);
 				const status = await gitService.getRepoStatus();
 
+				console.log("Received repo status:", status);
 				if (status) {
 					dispatch({ type: "SET_REPO_STATUS", status });
 					console.log(
 						`Repository status: ${status.github.totalPRs} PRs, ${status.cache.cachedPRs} cached (${status.cache.coveragePercent}%) - ${status.recommendation}`,
 					);
+				} else {
+					console.warn("No repo status returned");
 				}
 			} catch (err) {
 				console.error("Error fetching repo status:", err);
