@@ -186,24 +186,59 @@ export function RepoTimeline({ repoPath, onBack }: RepoTimelineProps) {
 
 	// Show error state
 	if (error) {
+		const isRateLimitError = error.includes("rate limit");
 		return (
 			<div className="w-full h-full flex items-center justify-center bg-slate-900 text-white">
 				<div className="text-center max-w-2xl px-8">
 					<div className="text-xl mb-4 text-red-400">
-						Error Loading Repository
+						{isRateLimitError ? "⚠️ GitHub API Rate Limit Exceeded" : "Error Loading Repository"}
 					</div>
 					<div className="text-gray-300 mb-4">{error}</div>
 					<div className="text-sm text-gray-500 mb-6">
 						Repository: {repoPath}
 					</div>
-					{onBack && (
+
+					{isRateLimitError && !githubToken && (
+						<div className="mb-6 p-4 bg-yellow-900 bg-opacity-30 border border-yellow-600 rounded-lg">
+							<div className="text-yellow-400 font-semibold mb-2">
+								💡 Add a GitHub Token
+							</div>
+							<div className="text-sm text-gray-300 mb-3">
+								Authenticated requests have a limit of 5,000/hour instead of 60/hour.
+							</div>
+							<GitHubAuthButton
+								currentToken={githubToken}
+								onTokenChange={setGithubToken}
+							/>
+						</div>
+					)}
+
+					{rateLimit && (
+						<div className="mb-6 text-sm text-gray-400">
+							<RateLimitDisplay
+								remaining={rateLimit.remaining}
+								limit={rateLimit.limit}
+								resetTime={rateLimit.resetTime}
+							/>
+						</div>
+					)}
+
+					<div className="flex gap-3 justify-center">
+						{onBack && (
+							<button
+								onClick={onBack}
+								className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors"
+							>
+								Back
+							</button>
+						)}
 						<button
-							onClick={onBack}
+							onClick={() => loadCommits(true)}
 							className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
 						>
-							Try Another Repository
+							Retry
 						</button>
-					)}
+					</div>
 				</div>
 			</div>
 		);
