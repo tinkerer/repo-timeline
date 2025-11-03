@@ -98,31 +98,26 @@ Published repo-timeline-api
 # Health check
 curl https://repo-timeline-api.your-subdomain.workers.dev/health
 
-# Test with a repo
+# Test metadata endpoint (fast - no file data)
+curl https://repo-timeline-api.your-subdomain.workers.dev/api/repo/facebook/react/metadata
+
+# Test full data endpoint (includes all PR files)
 curl https://repo-timeline-api.your-subdomain.workers.dev/api/repo/facebook/react
 ```
 
 ### 8. Update Frontend
 
-Update your frontend to use the worker URL instead of GitHub API:
-
-In `src/services/githubApiService.ts`, change:
+Update `src/config.ts` to use your worker URL:
 
 ```typescript
-// Add worker URL as optional parameter
-constructor(repoPath: string, token?: string, workerUrl?: string) {
-  this.workerUrl = workerUrl || null;
-  // ... existing code
-}
-
-// In fetch methods, use worker if available
-async fetchMergedPRs() {
-  const url = this.workerUrl
-    ? `${this.workerUrl}/api/repo/${this.owner}/${this.repo}`
-    : `https://api.github.com/repos/${this.owner}/${this.repo}/pulls`;
-  // ... rest of code
-}
+/**
+ * Cloudflare Worker URL for cached GitHub data
+ */
+export const WORKER_URL =
+  "https://repo-timeline-api.your-subdomain.workers.dev"; // <-- Update this!
 ```
+
+The frontend is already configured to use the worker automatically. No other changes needed!
 
 ## Monitoring
 

@@ -18,13 +18,18 @@ The site will be available at `https://[username].github.io/repo-timeline/`
 
 - **3D Force-Directed Graph**: Files and directories are visualized as nodes connected by springs, creating an organic, physics-based layout
 - **Time Travel**: Scrub through your repository's commit history to see how the structure evolved
+- **Real GitHub Integration**: Analyze any public GitHub repository by entering `owner/repo`
+- **Cloudflare Worker Caching**: Fast loading with globally cached PR data, avoiding GitHub rate limits
+- **Interactive Playback**: Multiple speeds (1x to 1800x), forward/backward playback, and smooth transitions
+- **Incremental Loading**: Watch the visualization build progressively as data loads
 - **Interactive Controls**: Pan, zoom, and rotate the 3D view with your mouse
 - **File Size Visualization**: Node sizes reflect file sizes (logarithmic scale)
 - **Real-time Physics**: Watch the graph settle into its natural layout with spring physics
-- **Commit Information**: See commit messages, authors, dates, and file counts
+- **Smart Caching**: localStorage caching for instant subsequent loads
 
 ## Technology Stack
 
+### Frontend
 - **Vite**: Fast build tool and dev server
 - **React**: UI framework
 - **TypeScript**: Type-safe development
@@ -34,7 +39,11 @@ The site will be available at `https://[username].github.io/repo-timeline/`
 - **Tailwind CSS**: Utility-first styling
 - **Biome**: Fast linter and formatter
 - **pnpm**: Efficient package manager
-- **Simple Git**: Git integration (backend)
+
+### Backend (Optional)
+- **Cloudflare Workers**: Edge computing for API caching
+- **Cloudflare D1**: SQLite database for PR data storage
+- **GitHub API**: Source of repository data
 
 ## Getting Started
 
@@ -77,19 +86,36 @@ pnpm preview
 repo-timeline/
 ├── src/
 │   ├── components/
-│   │   ├── FileNode3D.tsx       # Individual file/directory node
-│   │   ├── FileEdge3D.tsx       # Connection between nodes
-│   │   ├── RepoGraph3D.tsx      # Main 3D graph component
-│   │   ├── TimelineScrubber.tsx # Commit timeline controls
-│   │   └── RepoTimeline.tsx     # Main container component
+│   │   ├── FileNode3D.tsx        # Individual file/directory node
+│   │   ├── FileEdge3D.tsx        # Connection between nodes
+│   │   ├── RepoGraph3D.tsx       # Main 3D graph component
+│   │   ├── TimelineScrubber.tsx  # Commit timeline controls
+│   │   ├── RepoTimeline.tsx      # Main container component
+│   │   ├── RepoInput.tsx         # Repository input form
+│   │   ├── GitHubAuthButton.tsx  # GitHub authentication
+│   │   ├── RateLimitDisplay.tsx  # Rate limit indicator
+│   │   └── TestScene.tsx         # Test visualization scene
 │   ├── services/
-│   │   └── gitService.ts        # Git repository integration
+│   │   ├── gitService.ts         # Main Git service orchestration
+│   │   ├── githubApiService.ts   # GitHub API integration
+│   │   └── storageService.ts     # LocalStorage caching
 │   ├── utils/
-│   │   └── forceSimulation.ts   # Physics simulation for graph layout
-│   ├── types.ts                 # TypeScript type definitions
-│   ├── App.tsx                  # Root application component
-│   ├── main.tsx                 # Application entry point
-│   └── index.css                # Global styles
+│   │   ├── forceSimulation.ts    # Physics simulation for graph layout
+│   │   ├── fileTreeBuilder.ts    # Build file trees from PR data
+│   │   └── fileStateTracker.ts   # Track file state across PRs
+│   ├── data/
+│   │   └── demoCommits.ts        # Demo data for fallback
+│   ├── config.ts                 # Application configuration
+│   ├── types.ts                  # TypeScript type definitions
+│   ├── App.tsx                   # Root application component
+│   ├── main.tsx                  # Application entry point
+│   └── index.css                 # Global styles
+├── worker/                       # Cloudflare Worker (optional)
+│   ├── src/
+│   │   └── index.ts              # Worker API endpoints
+│   ├── migrations/               # D1 database migrations
+│   ├── wrangler.toml             # Worker configuration
+│   └── package.json
 ├── index.html
 ├── package.json
 ├── tsconfig.json
@@ -109,18 +135,26 @@ The visualization uses a custom force-directed graph algorithm with three types 
 
 ### Data Flow
 
-1. Git service fetches commit history
-2. Each commit's file tree is parsed into nodes and edges
-3. Force simulation calculates 3D positions for each node
-4. Three.js renders the 3D scene
-5. User can scrub through commits to see changes over time
+1. **User enters repository** (`owner/repo`)
+2. **Metadata fetch**: Quick metadata endpoint loads PR list and time range
+3. **Data source selection**:
+   - **Cloudflare Worker** (preferred): Fetches cached PR data from global D1 database
+   - **localStorage cache**: Loads previously fetched data instantly
+   - **GitHub API** (fallback): Direct API calls with rate limiting
+4. **Incremental loading**: PRs processed one-by-one, visualization updates in real-time
+5. **File state tracking**: Each PR's file changes are applied cumulatively
+6. **Tree building**: File paths converted to hierarchical node/edge structure
+7. **Force simulation**: Physics calculates optimal 3D positions for nodes
+8. **Three.js rendering**: 3D scene rendered with React Three Fiber
+9. **Time travel**: Scrubber controls let you navigate through commits
 
 ### Node Visualization
 
-- **Blue spheres**: Directories
-- **Green spheres**: Files
-- **Size**: Logarithmic scale based on file size
-- **Connections**: Purple lines show parent-child relationships
+- **Blue octahedrons (diamonds)**: Directories (fixed size)
+- **Green spheres**: Files (size scales logarithmically with file size)
+- **White tubes**: Parent-child relationships in file tree
+- **Virtual root**: "/" node connects all root-level files
+- **Transitions**: Smooth animations show size changes, additions, deletions
 
 ## Customization
 
@@ -148,18 +182,44 @@ Edit initial camera position in `src/components/RepoGraph3D.tsx`:
 camera={{ position: [0, 0, 200], fov: 75 }}
 ```
 
+## Optional: Cloudflare Worker Setup
+
+For better performance and to avoid GitHub rate limits, you can deploy the included Cloudflare Worker:
+
+1. See **[WORKER_DEPLOYMENT.md](WORKER_DEPLOYMENT.md)** for detailed setup instructions
+2. Worker provides:
+   - Global caching of PR data across all users
+   - Background updates to keep cache fresh
+   - 5,000+ requests/hour (vs 60 unauthenticated GitHub API)
+   - <100ms response times for cached repos
+   - Free tier covers most usage
+
+**Quick Setup:**
+```bash
+cd worker
+npm install
+npx wrangler d1 create repo_timeline
+npm run db:migrate
+npx wrangler secret put GITHUB_TOKENS
+npm run deploy
+```
+
+Update `src/config.ts` with your worker URL, and you're done!
+
 ## Future Enhancements
 
-- Real Git integration (currently uses demo data)
+- ✅ ~~Real Git integration~~ (Completed - GitHub API + Worker)
+- ✅ ~~Animation transitions between commits~~ (Completed)
 - File content diffing
-- Dependency graph visualization
+- Dependency graph visualization (import/export relationships)
 - Author-based coloring
-- Animation transitions between commits
+- Commit message search
 - Export visualizations as video/GIF
 - Multiple repository comparison
-- Search and filter files
-- Custom layout algorithms
-- Performance optimizations for large repos
+- Custom layout algorithms (hierarchical, circular, etc.)
+- Performance optimizations for very large repos (>10k PRs)
+- Branch visualization
+- Interactive file diff viewer
 
 ## License
 

@@ -87,11 +87,42 @@ Access at: `http://localhost:8787`
 
 ## API Endpoints
 
-### Get Repo Timeline
+### Get Repo Metadata (Fast)
+
+```
+GET /api/repo/:owner/:repo/metadata
+```
+
+Returns PR list without file data - perfect for initializing timeline range.
+
+**Example:**
+```bash
+curl https://repo-timeline-api.your-subdomain.workers.dev/api/repo/facebook/react/metadata
+```
+
+**Response:**
+```json
+[
+  {
+    "number": 1,
+    "title": "Initial commit",
+    "user": { "login": "username" },
+    "merged_at": "2023-01-01T00:00:00Z"
+  }
+]
+```
+
+**Headers:**
+- `X-Cache: HIT|MISS` - Cache status
+- `X-Cache-Age: <seconds>` - Age of cached data
+
+### Get Full Repo Timeline
 
 ```
 GET /api/repo/:owner/:repo
 ```
+
+Returns complete PR data including all file changes.
 
 **Example:**
 ```bash
@@ -211,14 +242,10 @@ npx wrangler d1 execute repo_timeline --command "SELECT * FROM repos LIMIT 10"
 
 ## Update Frontend
 
-Update your frontend to use the worker instead of direct GitHub API:
+Update `src/config.ts` with your worker URL:
 
 ```typescript
-// Before:
-const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls`);
-
-// After:
-const response = await fetch(`https://your-worker.workers.dev/api/repo/${owner}/${repo}`);
+export const WORKER_URL = "https://your-worker.workers.dev";
 ```
 
-The response format is identical, so no other changes needed!
+The frontend automatically uses the worker when `WORKER_URL` is configured. No other changes needed!
