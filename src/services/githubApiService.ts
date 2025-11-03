@@ -41,18 +41,29 @@ export interface LoadProgress {
  * Service for fetching repository data from GitHub's REST API
  * Handles rate limiting and incremental loading
  */
+export interface RateLimitInfo {
+	remaining: number;
+	limit: number;
+	resetTime: Date;
+}
+
 export class GitHubApiService {
 	private owner: string;
 	private repo: string;
 	private baseUrl = "https://api.github.com";
 	private requestDelay = 1000; // 1 second between requests to avoid rate limiting
 	private token?: string;
+	private lastRateLimit: RateLimitInfo | null = null;
 
 	constructor(repoPath: string, token?: string) {
 		const [owner, repo] = repoPath.split("/");
 		this.owner = owner;
 		this.repo = repo;
 		this.token = token;
+	}
+
+	getRateLimitInfo(): RateLimitInfo | null {
+		return this.lastRateLimit;
 	}
 
 	/**
@@ -87,9 +98,20 @@ export class GitHubApiService {
 			},
 		});
 
+		// Always capture rate limit info from headers
+		const rateLimitRemaining = response.headers.get("X-RateLimit-Remaining");
+		const rateLimitLimit = response.headers.get("X-RateLimit-Limit");
+		const rateLimitReset = response.headers.get("X-RateLimit-Reset");
+
+		if (rateLimitRemaining && rateLimitLimit && rateLimitReset) {
+			this.lastRateLimit = {
+				remaining: Number.parseInt(rateLimitRemaining),
+				limit: Number.parseInt(rateLimitLimit),
+				resetTime: new Date(Number.parseInt(rateLimitReset) * 1000),
+			};
+		}
+
 		if (!response.ok) {
-			const rateLimitRemaining = response.headers.get("X-RateLimit-Remaining");
-			const rateLimitReset = response.headers.get("X-RateLimit-Reset");
 
 			if (response.status === 403 && rateLimitRemaining === "0") {
 				const resetTime = rateLimitReset

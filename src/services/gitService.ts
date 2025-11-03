@@ -1,5 +1,8 @@
 import { CommitData, FileEdge, FileNode } from "../types";
-import { GitHubApiService } from "./githubApiService";
+import {
+	GitHubApiService,
+	type RateLimitInfo,
+} from "./githubApiService";
 import { StorageService } from "./storageService";
 
 interface RawCommitData {
@@ -25,9 +28,16 @@ export interface LoadProgress {
 
 export class GitService {
 	private repoPath: string;
+	private token?: string;
+	private githubService?: GitHubApiService;
 
-	constructor(repoPath: string) {
+	constructor(repoPath: string, token?: string) {
 		this.repoPath = repoPath;
+		this.token = token;
+	}
+
+	getRateLimitInfo(): RateLimitInfo | null {
+		return this.githubService?.getRateLimitInfo() || null;
 	}
 
 	/**
@@ -89,8 +99,8 @@ export class GitService {
 		if (/^[^/]+\/[^/]+$/.test(this.repoPath)) {
 			console.log(`Fetching from GitHub API: ${this.repoPath}`);
 			try {
-				const githubService = new GitHubApiService(this.repoPath);
-				const commits = await githubService.buildTimelineFromPRsIncremental(
+				this.githubService = new GitHubApiService(this.repoPath, this.token);
+				const commits = await this.githubService.buildTimelineFromPRsIncremental(
 					onCommit
 						? (commit) => {
 								// Apply size change calculations incrementally

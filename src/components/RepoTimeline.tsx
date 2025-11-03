@@ -1,7 +1,10 @@
 import { ArrowLeft, Loader2, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { RateLimitInfo } from "../services/githubApiService";
 import { GitService, LoadProgress } from "../services/gitService";
 import { CommitData, FileNode } from "../types";
+import { GitHubAuthButton } from "./GitHubAuthButton";
+import { RateLimitDisplay } from "./RateLimitDisplay";
 import { RepoGraph3D } from "./RepoGraph3D";
 import {
 	PlaybackDirection,
@@ -22,6 +25,10 @@ export function RepoTimeline({ repoPath, onBack }: RepoTimelineProps) {
 	const [loadProgress, setLoadProgress] = useState<LoadProgress | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [selectedNode, setSelectedNode] = useState<FileNode | null>(null);
+	const [githubToken, setGithubToken] = useState<string | null>(() =>
+		localStorage.getItem("github_token"),
+	);
+	const [rateLimit, setRateLimit] = useState<RateLimitInfo | null>(null);
 	const [isPlaying, setIsPlaying] = useState(false);
 	const [playbackSpeed, setPlaybackSpeed] = useState<PlaybackSpeed>(1);
 	const [playbackDirection, setPlaybackDirection] =
@@ -32,7 +39,7 @@ export function RepoTimeline({ repoPath, onBack }: RepoTimelineProps) {
 
 	const loadCommits = useCallback(
 		async (forceRefresh = false) => {
-			const gitService = new GitService(repoPath);
+			const gitService = new GitService(repoPath, githubToken || undefined);
 			gitServiceRef.current = gitService;
 
 			// Check if data was from cache
@@ -52,10 +59,12 @@ export function RepoTimeline({ repoPath, onBack }: RepoTimelineProps) {
 					setFromCache(true);
 					setLoading(false);
 					setError(null);
+					setRateLimit(gitService.getRateLimitInfo());
 				} catch (err) {
 					console.error("Error loading commits:", err);
 					setError(err instanceof Error ? err.message : "Failed to load repository");
 					setLoading(false);
+					setRateLimit(gitService.getRateLimitInfo());
 				}
 			} else {
 				// Incremental loading - show visualization as data arrives
@@ -80,13 +89,14 @@ export function RepoTimeline({ repoPath, onBack }: RepoTimelineProps) {
 				} catch (err) {
 					console.error("Error loading commits:", err);
 					setError(err instanceof Error ? err.message : "Failed to load repository");
+					setRateLimit(gitService.getRateLimitInfo());
 				} finally {
 					setBackgroundLoading(false);
 					setLoadProgress(null);
 				}
 			}
 		},
-		[repoPath],
+		[repoPath, githubToken],
 	);
 
 	useEffect(() => {
@@ -273,18 +283,29 @@ export function RepoTimeline({ repoPath, onBack }: RepoTimelineProps) {
 					<div>
 						<h1 className="text-xl font-bold mb-1">Repo Timeline Visualizer</h1>
 						<div className="text-sm text-gray-400">{repoPath}</div>
-						{fromCache && !backgroundLoading && (
-							<div className="text-xs text-blue-400 mt-1">
-								📦 Loaded from cache
-							</div>
-						)}
-						{backgroundLoading && loadProgress && (
-							<div className="text-xs text-yellow-400 mt-1 flex items-center gap-2">
-								<Loader2 size={12} className="animate-spin" />
-								{loadProgress.message || "Loading PRs..."} ({commits.length}{" "}
-								loaded)
-							</div>
-						)}
+						<div className="flex items-center gap-3 mt-2">
+							{fromCache && !backgroundLoading && (
+								<div className="text-xs text-blue-400">📦 Loaded from cache</div>
+							)}
+							{backgroundLoading && loadProgress && (
+								<div className="text-xs text-yellow-400 flex items-center gap-2">
+									<Loader2 size={12} className="animate-spin" />
+									{loadProgress.message || "Loading PRs..."} ({commits.length}{" "}
+									loaded)
+								</div>
+							)}
+							<GitHubAuthButton
+								currentToken={githubToken}
+								onTokenChange={setGithubToken}
+							/>
+							{rateLimit && (
+								<RateLimitDisplay
+									remaining={rateLimit.remaining}
+									limit={rateLimit.limit}
+									resetTime={rateLimit.resetTime}
+								/>
+							)}
+						</div>
 					</div>
 					<div className="flex gap-2">
 						{onBack && (
