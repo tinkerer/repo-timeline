@@ -10,6 +10,17 @@ export interface GitHubPR {
 	files_url: string;
 }
 
+export interface GitHubCommit {
+	sha: string;
+	commit: {
+		message: string;
+		author: {
+			name: string;
+			date: string;
+		};
+	};
+}
+
 export interface GitHubPRFile {
 	filename: string;
 	status: "added" | "removed" | "modified" | "renamed";
@@ -182,7 +193,9 @@ export class GitHubApiService {
 		});
 
 		if (prs.length === 0) {
-			throw new Error("No merged pull requests found");
+			// Fall back to fetching commits directly if no PRs found
+			console.log("No merged PRs found, falling back to commits");
+			return this.buildTimelineFromCommits(onCommit, onProgress);
 		}
 
 		const commits: CommitData[] = [];
@@ -255,6 +268,78 @@ export class GitHubApiService {
 			if (i < prs.length - 1) {
 				await this.sleep(this.requestDelay);
 			}
+		}
+
+		return commits;
+	}
+
+	/**
+	 * Build commit timeline from commits directly (fallback when no PRs)
+	 */
+	async buildTimelineFromCommits(
+		onCommit?: (commit: CommitData) => void,
+		onProgress?: (progress: LoadProgress) => void,
+	): Promise<CommitData[]> {
+		if (onProgress) {
+			onProgress({
+				loaded: 0,
+				total: -1,
+				percentage: 10,
+				message: "Fetching commits (no PRs found)...",
+			});
+		}
+
+		// Fetch commits from default branch
+		const commits: CommitData[] = [];
+		let page = 1;
+		const perPage = 100;
+		const maxCommits = 100; // Limit to avoid too many API calls
+
+		while (commits.length < maxCommits) {
+			const batch = await this.fetchGitHub<GitHubCommit[]>(
+				`/repos/${this.owner}/${this.repo}/commits?per_page=${perPage}&page=${page}`,
+			);
+
+			if (batch.length === 0) break;
+
+			// Process each commit
+			for (const commitData of batch) {
+				if (commits.length >= maxCommits) break;
+
+				const commit: CommitData = {
+					hash: commitData.sha.substring(0, 7),
+					message: commitData.commit.message.split("\n")[0],
+					author: commitData.commit.author.name,
+					date: new Date(commitData.commit.author.date),
+					files: [], // We'd need to fetch commit details for files
+					edges: [],
+				};
+
+				commits.push(commit);
+
+				if (onCommit) {
+					onCommit(commit);
+				}
+
+				if (onProgress) {
+					onProgress({
+						loaded: commits.length,
+						total: maxCommits,
+						percentage: 10 + Math.round((commits.length / maxCommits) * 90),
+						message: `Loading commits: ${commits.length}/${maxCommits}`,
+					});
+				}
+			}
+
+			if (batch.length < perPage) break;
+			page++;
+			await this.sleep(this.requestDelay);
+		}
+
+		if (commits.length === 0) {
+			throw new Error(
+				"No commits or pull requests found. Repository may be empty or private.",
+			);
 		}
 
 		return commits;
