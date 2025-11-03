@@ -46,11 +46,13 @@ export class GitHubApiService {
 	private repo: string;
 	private baseUrl = "https://api.github.com";
 	private requestDelay = 1000; // 1 second between requests to avoid rate limiting
+	private token?: string;
 
-	constructor(repoPath: string) {
+	constructor(repoPath: string, token?: string) {
 		const [owner, repo] = repoPath.split("/");
 		this.owner = owner;
 		this.repo = repo;
+		this.token = token;
 	}
 
 	/**
@@ -68,10 +70,19 @@ export class GitHubApiService {
 		options: RequestInit = {},
 	): Promise<T> {
 		const url = `${this.baseUrl}${endpoint}`;
+		const headers: Record<string, string> = {
+			Accept: "application/vnd.github.v3+json",
+		};
+
+		// Add auth token if available
+		if (this.token) {
+			headers.Authorization = `Bearer ${this.token}`;
+		}
+
 		const response = await fetch(url, {
 			...options,
 			headers: {
-				Accept: "application/vnd.github.v3+json",
+				...headers,
 				...options.headers,
 			},
 		});
@@ -85,7 +96,13 @@ export class GitHubApiService {
 					? new Date(Number.parseInt(rateLimitReset) * 1000)
 					: new Date();
 				throw new Error(
-					`GitHub API rate limit exceeded. Resets at ${resetTime.toLocaleTimeString()}`,
+					`GitHub API rate limit exceeded. Resets at ${resetTime.toLocaleTimeString()}. Unauthenticated limit is 60/hour. For higher limits, wait or contact the developer.`,
+				);
+			}
+
+			if (response.status === 404) {
+				throw new Error(
+					`Repository not found: ${this.owner}/${this.repo}. Repository may be private or doesn't exist.`,
 				);
 			}
 

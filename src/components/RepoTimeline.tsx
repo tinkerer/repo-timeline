@@ -20,6 +20,7 @@ export function RepoTimeline({ repoPath, onBack }: RepoTimelineProps) {
 	const [loading, setLoading] = useState(true);
 	const [backgroundLoading, setBackgroundLoading] = useState(false);
 	const [loadProgress, setLoadProgress] = useState<LoadProgress | null>(null);
+	const [error, setError] = useState<string | null>(null);
 	const [selectedNode, setSelectedNode] = useState<FileNode | null>(null);
 	const [isPlaying, setIsPlaying] = useState(false);
 	const [playbackSpeed, setPlaybackSpeed] = useState<PlaybackSpeed>(1);
@@ -50,8 +51,10 @@ export function RepoTimeline({ repoPath, onBack }: RepoTimelineProps) {
 					setCurrentIndex(0);
 					setFromCache(true);
 					setLoading(false);
-				} catch (error) {
-					console.error("Error loading commits:", error);
+					setError(null);
+				} catch (err) {
+					console.error("Error loading commits:", err);
+					setError(err instanceof Error ? err.message : "Failed to load repository");
 					setLoading(false);
 				}
 			} else {
@@ -74,8 +77,9 @@ export function RepoTimeline({ repoPath, onBack }: RepoTimelineProps) {
 							setCommits((prev) => [...prev, commit]);
 						},
 					);
-				} catch (error) {
-					console.error("Error loading commits:", error);
+				} catch (err) {
+					console.error("Error loading commits:", err);
+					setError(err instanceof Error ? err.message : "Failed to load repository");
 				} finally {
 					setBackgroundLoading(false);
 					setLoadProgress(null);
@@ -160,6 +164,27 @@ export function RepoTimeline({ repoPath, onBack }: RepoTimelineProps) {
 						<div className="text-gray-400">
 							{fromCache ? "Loading from cache..." : "Analyzing commit history"}
 						</div>
+					)}
+				</div>
+			</div>
+		);
+	}
+
+	// Show error state
+	if (error) {
+		return (
+			<div className="w-full h-full flex items-center justify-center bg-slate-900 text-white">
+				<div className="text-center max-w-2xl px-8">
+					<div className="text-xl mb-4 text-red-400">Error Loading Repository</div>
+					<div className="text-gray-300 mb-4">{error}</div>
+					<div className="text-sm text-gray-500 mb-6">Repository: {repoPath}</div>
+					{onBack && (
+						<button
+							onClick={onBack}
+							className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+						>
+							Try Another Repository
+						</button>
 					)}
 				</div>
 			</div>
