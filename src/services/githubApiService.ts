@@ -1,4 +1,5 @@
-import { CommitData, FileEdge, FileNode } from "../types";
+import { CommitData } from "../types";
+import { buildEdges, buildFileTree } from "../utils/fileTreeBuilder";
 
 export interface GitHubPR {
 	number: number;
@@ -377,82 +378,15 @@ export class GitHubApiService {
 				}
 			}
 
-			// Build commit snapshot from current file state
+			// Build commit snapshot from current file state using shared utilities
 			const filePaths = Array.from(fileState.entries());
-			const files: FileNode[] = [];
-			const directoriesNeeded = new Set<string>();
-			let hasRootFiles = false;
+			const fileData = filePaths.map(([path, size]) => ({
+				path,
+				size: Math.max(0, size), // Ensure non-negative
+			}));
 
-			// First pass: create file nodes and identify needed directories
-			filePaths.forEach(([path, size]) => {
-				files.push({
-					id: path,
-					path,
-					name: path.split("/").pop() || path,
-					size: Math.max(0, size), // Ensure non-negative
-					type: "file",
-				});
-
-				// Identify all parent directories needed
-				const pathParts = path.split("/");
-				if (pathParts.length === 1) {
-					// Root-level file
-					hasRootFiles = true;
-				}
-				for (let i = 1; i < pathParts.length; i++) {
-					const dirPath = pathParts.slice(0, i).join("/");
-					directoriesNeeded.add(dirPath);
-				}
-			});
-
-			// Second pass: create directory nodes
-			const filePathSet = new Set(files.map((f) => f.path));
-			directoriesNeeded.forEach((dirPath) => {
-				if (!filePathSet.has(dirPath)) {
-					files.push({
-						id: dirPath,
-						path: dirPath,
-						name: dirPath.split("/").pop() || dirPath,
-						size: 0, // Directories have no size
-						type: "directory",
-					});
-				}
-			});
-
-			// Add a virtual root node if there are root-level files
-			if (hasRootFiles) {
-				files.push({
-					id: "/",
-					path: "/",
-					name: "root",
-					size: 0,
-					type: "directory",
-				});
-			}
-
-			// Build edges for parent-child relationships
-			const edges: FileEdge[] = [];
-			files.forEach((file) => {
-				if (file.path === "/") return; // Skip the root node itself
-
-				const pathParts = file.path.split("/");
-				if (pathParts.length > 1) {
-					// Connect to parent directory
-					const parentPath = pathParts.slice(0, -1).join("/");
-					edges.push({
-						source: parentPath,
-						target: file.path,
-						type: "parent",
-					});
-				} else {
-					// Root-level file - connect to virtual root
-					edges.push({
-						source: "/",
-						target: file.path,
-						type: "parent",
-					});
-				}
-			});
+			const files = buildFileTree(fileData);
+			const edges = buildEdges(fileData);
 
 			const commit: CommitData = {
 				hash: pr.merge_commit_sha

@@ -2,7 +2,7 @@ import { ArrowLeft, Loader2, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RateLimitInfo } from "../services/githubApiService";
 import { GitService, LoadProgress } from "../services/gitService";
-import { CommitData, FileNode } from "../types";
+import { CommitData, FileEdge, FileNode } from "../types";
 import { RateLimitDisplay } from "./RateLimitDisplay";
 import { RepoGraph3D } from "./RepoGraph3D";
 import {
