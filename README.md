@@ -4,6 +4,46 @@ A 3D visualization tool for exploring Git repository evolution over time. Watch 
 
 🌐 **[Live Demo](https://rjwalters.github.io/repo-timeline/)**
 
+## Quick Start
+
+### Using as an npm Package
+
+Install the package in your React application:
+
+```bash
+npm install @rjwalters/repo-timeline
+# or
+pnpm add @rjwalters/repo-timeline
+```
+
+Then import and use the component:
+
+```tsx
+import { RepoTimeline } from '@rjwalters/repo-timeline';
+import '@rjwalters/repo-timeline/dist/style.css';
+
+function App() {
+  return (
+    <div style={{ width: '100vw', height: '100vh' }}>
+      <RepoTimeline repoPath="facebook/react" />
+    </div>
+  );
+}
+```
+
+📖 **[Full embedding guide](EMBEDDING.md)** - Installation, props, TypeScript, and advanced usage
+
+### Development Setup
+
+For local development or to contribute to this project:
+
+1. Clone the repository
+2. Install dependencies: `pnpm install`
+3. Start dev server: `pnpm dev`
+4. Open browser to `http://localhost:5173`
+
+See the **[Contributing](#contributing)** section below for more details.
+
 ## Deployment
 
 This project automatically deploys to GitHub Pages via GitHub Actions. To enable:
@@ -45,7 +85,7 @@ The site will be available at `https://[username].github.io/repo-timeline/`
 - **Cloudflare D1**: SQLite database for PR data storage
 - **GitHub API**: Source of repository data
 
-## Getting Started
+## Development Commands
 
 ### Installation
 
@@ -56,7 +96,7 @@ pnpm install
 ### Development
 
 ```bash
-pnpm dev
+pnpm dev          # Start demo app dev server
 ```
 
 Open your browser to `http://localhost:5173`
@@ -64,20 +104,22 @@ Open your browser to `http://localhost:5173`
 ### Build
 
 ```bash
-pnpm build
+pnpm build        # Build library for npm
+pnpm build:demo   # Build demo app for GitHub Pages
 ```
 
 ### Lint
 
 ```bash
-pnpm lint
-pnpm lint:fix  # Auto-fix issues
+pnpm lint         # Check code quality
+pnpm lint:fix     # Auto-fix issues
+pnpm format       # Format code with Biome
 ```
 
-### Preview Production Build
+### Preview
 
 ```bash
-pnpm preview
+pnpm preview      # Preview demo build
 ```
 
 ## Project Structure
@@ -85,13 +127,20 @@ pnpm preview
 ```
 repo-timeline/
 ├── src/
+│   ├── lib/                      # NPM package exports
+│   │   ├── index.ts              # Main library entry point
+│   │   └── types.ts              # Public API types
+│   ├── demo/                     # Demo app (GitHub Pages)
+│   │   ├── App.tsx               # Demo app root
+│   │   ├── main.tsx              # Demo app entry point
+│   │   ├── RepoInput.tsx         # Repository input form
+│   │   └── RepoWrapper.tsx       # Demo app wrapper
 │   ├── components/
 │   │   ├── FileNode3D.tsx        # Individual file/directory node
 │   │   ├── FileEdge3D.tsx        # Connection between nodes
 │   │   ├── RepoGraph3D.tsx       # Main 3D graph component
 │   │   ├── TimelineScrubber.tsx  # Commit timeline controls
 │   │   ├── RepoTimeline.tsx      # Main container component
-│   │   ├── RepoInput.tsx         # Repository input form
 │   │   ├── GitHubAuthButton.tsx  # GitHub authentication
 │   │   ├── RateLimitDisplay.tsx  # Rate limit indicator
 │   │   └── TestScene.tsx         # Test visualization scene
@@ -107,9 +156,13 @@ repo-timeline/
 │   │   └── demoCommits.ts        # Demo data for fallback
 │   ├── config.ts                 # Application configuration
 │   ├── types.ts                  # TypeScript type definitions
-│   ├── App.tsx                   # Root application component
-│   ├── main.tsx                  # Application entry point
 │   └── index.css                 # Global styles
+├── dist/                         # NPM package build output
+│   ├── index.js                  # ESM bundle
+│   ├── index.umd.js              # UMD bundle
+│   ├── index.d.ts                # TypeScript declarations
+│   └── style.css                 # Bundled styles
+├── demo-dist/                    # Demo app build output (GitHub Pages)
 ├── worker/                       # Cloudflare Worker (optional)
 │   ├── src/
 │   │   └── index.ts              # Worker API endpoints
@@ -118,8 +171,8 @@ repo-timeline/
 │   └── package.json
 ├── index.html
 ├── package.json
-├── tsconfig.json
-├── vite.config.ts
+├── vite.config.ts                # Library build config
+├── vite.demo.config.ts           # Demo build config
 └── tailwind.config.js
 ```
 

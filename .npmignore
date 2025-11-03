@@ -11,7 +11,7 @@ biome.json
 tailwind.config.js
 postcss.config.js
 
-# Documentation (keep README.md, LICENSE)
+# Documentation (keep README.md, LICENSE, EMBEDDING.md)
 PACKAGE_PLAN.md
 PACKAGE_CONVERSION_CHECKLIST.md
 WORKER_DEPLOYMENT.md
