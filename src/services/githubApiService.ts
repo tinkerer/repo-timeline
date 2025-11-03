@@ -127,12 +127,7 @@ export class GitHubApiService {
 		const url = `${this.workerUrl}/api/repo/${this.owner}/${this.repo}/status`;
 		console.log("Fetching status from:", url);
 
-		// Add 3 second timeout to prevent hanging
-		const controller = new AbortController();
-		const timeoutId = setTimeout(() => controller.abort(), 3000);
-
-		const response = await fetch(url, { signal: controller.signal });
-		clearTimeout(timeoutId);
+		const response = await fetch(url);
 		console.log("Response status:", response.status, response.statusText);
 
 		if (!response.ok) {
