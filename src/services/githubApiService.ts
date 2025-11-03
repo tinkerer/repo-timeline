@@ -183,6 +183,37 @@ export class GitHubApiService {
 	}
 
 	/**
+	 * Fetch a single PR with files from Cloudflare Worker (instant from cache!)
+	 */
+	async fetchSinglePR(prNumber: number): Promise<GitHubPR | null> {
+		if (!this.workerUrl) {
+			throw new Error("Worker URL required for single PR fetch");
+		}
+
+		const url = `${this.workerUrl}/api/repo/${this.owner}/${this.repo}/pr/${prNumber}`;
+		console.log("Fetching single PR from:", url);
+
+		const response = await fetch(url);
+
+		if (response.status === 404) {
+			return null;
+		}
+
+		if (!response.ok) {
+			const error = await response
+				.json()
+				.catch(() => ({ error: "Unknown error" }));
+			throw new Error(
+				error.error || `Single PR request failed: ${response.status}`,
+			);
+		}
+
+		const data = await response.json();
+		console.log(`Fetched PR #${prNumber}:`, data);
+		return data;
+	}
+
+	/**
 	 * Fetch data from Cloudflare Worker
 	 */
 	private async fetchFromWorker(): Promise<GitHubPR[]> {

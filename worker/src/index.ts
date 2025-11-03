@@ -122,6 +122,21 @@ export default {
 			return handleMetadataRequest(env, owner, repo, corsHeaders);
 		}
 
+		// API endpoint: /api/repo/:owner/:repo/pr/:number (single PR with files)
+		const prMatch = url.pathname.match(
+			/^\/api\/repo\/([^/]+)\/([^/]+)\/pr\/(\d+)$/,
+		);
+		if (prMatch) {
+			const [, owner, repo, prNumber] = prMatch;
+			return handleSinglePRRequest(
+				env,
+				owner,
+				repo,
+				Number.parseInt(prNumber),
+				corsHeaders,
+			);
+		}
+
 		// API endpoint: /api/repo/:owner/:repo (full data with files)
 		const match = url.pathname.match(/^\/api\/repo\/([^/]+)\/([^/]+)$/);
 		if (!match) {
@@ -380,8 +395,90 @@ async function handleRepoSummaryRequest(
 }
 
 /**
- * Handle metadata-only request (all PRs without files)
+ * Handle single PR request - returns one PR with files from cache or fetches from GitHub
  */
+async function handleSinglePRRequest(
+	env: Env,
+	owner: string,
+	repo: string,
+	prNumber: number,
+	corsHeaders: Record<string, string>,
+): Promise<Response> {
+	const fullName = `${owner}/${repo}`;
+	const tokenRotator = new TokenRotator(env.GITHUB_TOKENS);
+
+	try {
+		// First check cache for this specific PR
+		const cached = await getCachedData(env.DB, fullName);
+		if (cached) {
+			const cachedPR = cached.prs.find((pr) => pr.number === prNumber);
+			if (cachedPR && cachedPR.files) {
+				console.log(`Cache hit for ${fullName} PR #${prNumber}`);
+				return new Response(JSON.stringify(cachedPR), {
+					headers: {
+						...corsHeaders,
+						"Content-Type": "application/json",
+						"X-Cache-Hit": "true",
+					},
+				});
+			}
+		}
+
+		// Not in cache or cache doesn't have files - fetch from GitHub
+		console.log(`Fetching ${fullName} PR #${prNumber} from GitHub`);
+		const pr = await fetchSinglePR(
+			tokenRotator.getNextToken(),
+			owner,
+			repo,
+			prNumber,
+		);
+
+		if (!pr || !pr.merged_at) {
+			return new Response(
+				JSON.stringify({
+					error: `PR #${prNumber} not found or not merged`,
+				}),
+				{
+					status: 404,
+					headers: { ...corsHeaders, "Content-Type": "application/json" },
+				},
+			);
+		}
+
+		// Fetch files for this PR
+		const files = await fetchPRFiles(
+			tokenRotator.getNextToken(),
+			owner,
+			repo,
+			prNumber,
+		);
+
+		const prWithFiles = {
+			...pr,
+			files,
+		};
+
+		return new Response(JSON.stringify(prWithFiles), {
+			headers: {
+				...corsHeaders,
+				"Content-Type": "application/json",
+				"X-Cache-Hit": "false",
+			},
+		});
+	} catch (error) {
+		console.error(`Error fetching PR #${prNumber}:`, error);
+		return new Response(
+			JSON.stringify({
+				error: error instanceof Error ? error.message : "Internal server error",
+			}),
+			{
+				status: 500,
+				headers: { ...corsHeaders, "Content-Type": "application/json" },
+			},
+		);
+	}
+}
+
 async function handleMetadataRequest(
 	env: Env,
 	owner: string,
@@ -622,6 +719,61 @@ async function updateRepoData(
 	} catch (error) {
 		console.error("Error in background update:", error);
 	}
+}
+
+/**
+ * Fetch a single PR from GitHub
+ */
+async function fetchSinglePR(
+	token: string,
+	owner: string,
+	repo: string,
+	prNumber: number,
+): Promise<PullRequest | null> {
+	const url = `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`;
+
+	const response = await fetch(url, {
+		headers: {
+			Authorization: `Bearer ${token}`,
+			Accept: "application/vnd.github.v3+json",
+			"User-Agent": "Repo-Timeline-Worker",
+		},
+	});
+
+	if (!response.ok) {
+		if (response.status === 404) {
+			return null;
+		}
+		throw new Error(`GitHub API error: ${response.status}`);
+	}
+
+	return await response.json();
+}
+
+/**
+ * Fetch files for a specific PR
+ */
+async function fetchPRFiles(
+	token: string,
+	owner: string,
+	repo: string,
+	prNumber: number,
+): Promise<PRFile[]> {
+	const url = `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/files?per_page=100`;
+
+	const response = await fetch(url, {
+		headers: {
+			Authorization: `Bearer ${token}`,
+			Accept: "application/vnd.github.v3+json",
+			"User-Agent": "Repo-Timeline-Worker",
+		},
+	});
+
+	if (!response.ok) {
+		throw new Error(`GitHub API error: ${response.status}`);
+	}
+
+	return await response.json();
 }
 
 /**
