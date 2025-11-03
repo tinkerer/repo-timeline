@@ -84,7 +84,10 @@
 			}
 		}
 	},
-	"javascript": { "formatter": { "quoteStyle": "double" } },
+	"javascript": {
+		"formatter": { "quoteStyle": "double" },
+		"globals": ["__GIT_HASH__", "__BUILD_TIME__"]
+	},
 	"overrides": [
 		{
 			"includes": ["*.ts", "*.tsx", "*.mts", "*.cts"],
