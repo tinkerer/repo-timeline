@@ -195,8 +195,7 @@ export function RepoTimeline({
 			<div className="absolute top-4 left-4 bg-gray-900 bg-opacity-90 text-white p-4 rounded-lg border border-gray-700">
 				<div className="flex items-center justify-between gap-4">
 					<div>
-						<h1 className="text-xl font-bold mb-1">Repo Timeline Visualizer</h1>
-						<div className="text-sm text-gray-400">{repoPath}</div>
+						<h1 className="text-xl font-bold mb-1">{repoPath}</h1>
 						<div className="flex items-center gap-3 mt-2">
 							{rateLimitedCache && (
 								<div className="text-xs text-yellow-400 bg-yellow-900 bg-opacity-20 px-2 py-1 rounded border border-yellow-600">
