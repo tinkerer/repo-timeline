@@ -234,6 +234,15 @@ export class GitHubApiService {
 	}
 
 	/**
+	 * Fetch repository metadata to get default branch name
+	 */
+	private async fetchRepoInfo(): Promise<{ default_branch: string }> {
+		return this.fetchGitHub<{ default_branch: string }>(
+			`/repos/${this.owner}/${this.repo}`,
+		);
+	}
+
+	/**
 	 * Sleep for a specified duration
 	 */
 	private sleep(ms: number): Promise<void> {
@@ -491,22 +500,26 @@ export class GitHubApiService {
 
 	/**
 	 * Build commit timeline from commits directly (when no merged PRs exist)
-	 * This fetches commits from the main branch and builds file state incrementally
+	 * This fetches commits from the default branch and builds file state incrementally
 	 */
 	async buildTimelineFromCommits(
 		onCommit?: (commit: CommitData) => void,
 		onProgress?: (progress: LoadProgress) => void,
 	): Promise<CommitData[]> {
+		// First, fetch repository info to get default branch
+		const repoInfo = await this.fetchRepoInfo();
+		const defaultBranch = repoInfo.default_branch;
+
 		if (onProgress) {
 			onProgress({
 				loaded: 0,
 				total: -1,
 				percentage: 0,
-				message: "Fetching commits from main branch...",
+				message: `Fetching commits from ${defaultBranch} branch...`,
 			});
 		}
 
-		// First, fetch commit list (without file details)
+		// Fetch commit list from default branch (without file details)
 		const commitList: GitHubCommit[] = [];
 		let page = 1;
 		const perPage = 100;
@@ -514,7 +527,7 @@ export class GitHubApiService {
 
 		while (commitList.length < maxCommits) {
 			const batch = await this.fetchGitHub<GitHubCommit[]>(
-				`/repos/${this.owner}/${this.repo}/commits?per_page=${perPage}&page=${page}`,
+				`/repos/${this.owner}/${this.repo}/commits?sha=${defaultBranch}&per_page=${perPage}&page=${page}`,
 			);
 
 			if (batch.length === 0) break;
