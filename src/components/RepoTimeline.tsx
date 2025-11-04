@@ -1,5 +1,5 @@
 import { ArrowLeft, ChevronDown, ChevronUp, Loader2, RefreshCw } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { TEST_MODE } from "../config";
 import { usePlaybackTimer } from "../hooks/usePlaybackTimer";
 import { useRepoData } from "../hooks/useRepoData";
@@ -44,6 +44,8 @@ export function RepoTimeline({
 		rateLimitedCache,
 		repoStatus,
 		loadCommits,
+		loadMore,
+		hasMoreCommits,
 	} = useRepoData({
 		repoPath,
 		workerUrl,
@@ -73,6 +75,45 @@ export function RepoTimeline({
 		onTimeChange: setCurrentTime,
 		onPlayingChange: setIsPlaying,
 	});
+
+	// Autoload more commits when approaching the end
+	useEffect(() => {
+		console.log('[AUTOLOAD] Check:', {
+			hasMoreCommits,
+			backgroundLoading,
+			commitsCount: commits.length,
+			currentTime,
+			timeRange,
+		});
+
+		if (!hasMoreCommits || backgroundLoading || commits.length === 0) {
+			console.log('[AUTOLOAD] Skip - conditions not met:', {
+				hasMoreCommits,
+				backgroundLoading,
+				hasCommits: commits.length > 0,
+			});
+			return;
+		}
+
+		// Calculate progress through timeline (0 to 1)
+		const totalTime = timeRange.end - timeRange.start;
+		const elapsed = currentTime - timeRange.start;
+		const progress = elapsed / totalTime;
+
+		console.log('[AUTOLOAD] Progress:', {
+			progress: `${Math.round(progress * 100)}%`,
+			currentTime,
+			timeRange,
+			elapsed,
+			totalTime,
+		});
+
+		// Trigger loading when we're at 80% through the loaded commits
+		if (progress > 0.8) {
+			console.log('[AUTOLOAD] 🚀 Triggering loadMore() - at', `${Math.round(progress * 100)}%`);
+			loadMore();
+		}
+	}, [currentTime, timeRange, hasMoreCommits, backgroundLoading, commits.length, loadMore]);
 
 	const handlePlayPause = useCallback(() => {
 		setIsPlaying(!isPlaying);

@@ -152,19 +152,20 @@ export function RepoGraph3D({ nodes, edges, onNodeClick }: RepoGraph3DProps) {
 	const nodeMap = new Map(simulationNodes.map((n) => [n.id, n]));
 
 	// Debug: Log nodes and edges on first render
-	if (simulationNodes.length > 0 && edges.length > 0) {
-		const dirs = simulationNodes.filter(n => n.type === "directory");
-		const rootNode = simulationNodes.find(n => n.id === "/" || n.path === "/");
-		const rootEdges = edges.filter(e => e.source === "/");
-		const dirEdges = rootEdges.filter(e => {
-			const target = simulationNodes.find(n => n.id === e.target);
-			return target?.type === "directory";
-		});
-		console.log(`📊 GRAPH STATE: ${simulationNodes.length} nodes, ${dirs.length} dirs, ${edges.length} edges`);
-		console.log(`🏠 Root node:`, rootNode);
-		console.log(`🔗 Edges from root: ${rootEdges.length} total, ${dirEdges.length} to directories`);
-		console.log(`   Targets:`, rootEdges.map(e => e.target));
-	}
+	// Debug logging removed - was flooding console during autoload testing
+	// if (simulationNodes.length > 0 && edges.length > 0) {
+	// 	const dirs = simulationNodes.filter(n => n.type === "directory");
+	// 	const rootNode = simulationNodes.find(n => n.id === "/" || n.path === "/");
+	// 	const rootEdges = edges.filter(e => e.source === "/");
+	// 	const dirEdges = rootEdges.filter(e => {
+	// 		const target = simulationNodes.find(n => n.id === e.target);
+	// 		return target?.type === "directory";
+	// 	});
+	// 	console.log(`📊 GRAPH STATE: ${simulationNodes.length} nodes, ${dirs.length} dirs, ${edges.length} edges`);
+	// 	console.log(`🏠 Root node:`, rootNode);
+	// 	console.log(`🔗 Edges from root: ${rootEdges.length} total, ${dirEdges.length} to directories`);
+	// 	console.log(`   Targets:`, rootEdges.map(e => e.target));
+	// }
 
 	if (contextLost) {
 		return (

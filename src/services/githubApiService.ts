@@ -435,6 +435,116 @@ export class GitHubApiService {
 	}
 
 	/**
+	 * Load additional commits from worker with pagination
+	 * Returns processed commits and pagination info
+	 */
+	async loadMoreCommits(
+		offset: number,
+		limit = 40,
+		existingFiles: Map<string, number> = new Map(),
+		onCommit?: (commit: CommitData) => void,
+		onProgress?: (progress: LoadProgress) => void,
+	): Promise<{
+		commits: CommitData[];
+		hasMore: boolean;
+		totalCount: number;
+	}> {
+		if (!this.shouldUseWorker()) {
+			throw new Error("loadMoreCommits requires worker URL");
+		}
+
+		if (onProgress) {
+			onProgress({
+				loaded: 0,
+				total: -1,
+				percentage: 0,
+				message: `Fetching commits ${offset}-${offset + limit}...`,
+			});
+		}
+
+		const workerResponse = await this.fetchCommitsFromWorker(offset, limit);
+
+		if (onProgress) {
+			onProgress({
+				loaded: workerResponse.commits.length,
+				total: workerResponse.commits.length,
+				percentage: 50,
+				message: `Processing ${workerResponse.commits.length} additional commits...`,
+			});
+		}
+
+		// Process commits with existing file state
+		const commits: CommitData[] = [];
+		const fileStateTracker = new FileStateTracker();
+
+		// Initialize file state from existing files
+		for (const [path, size] of existingFiles.entries()) {
+			fileStateTracker.updateFromPRFiles([
+				{
+					filename: path,
+					status: "added",
+					additions: size,
+					deletions: 0,
+					changes: size,
+				},
+			]);
+		}
+
+		for (let i = 0; i < workerResponse.commits.length; i++) {
+			const workerCommit = workerResponse.commits[i];
+
+			if (onProgress) {
+				onProgress({
+					loaded: i + 1,
+					total: workerResponse.commits.length,
+					percentage: 50 + Math.round((i / workerResponse.commits.length) * 50),
+					message: `Processing commit ${i + 1}/${workerResponse.commits.length}`,
+				});
+			}
+
+			// Update file state from commit files
+			if (workerCommit.files && workerCommit.files.length > 0) {
+				const prFiles: GitHubPRFile[] = workerCommit.files.map((file) => ({
+					filename: file.filename,
+					status: file.status,
+					additions: file.additions,
+					deletions: file.deletions,
+					changes: file.changes,
+					previous_filename: file.previous_filename,
+				}));
+
+				fileStateTracker.updateFromPRFiles(prFiles);
+			}
+
+			// Build commit snapshot from current file state
+			const fileData = fileStateTracker.getFileData();
+			const files = buildFileTree(fileData);
+			const edges = buildEdges(fileData);
+
+			const commit: CommitData = {
+				hash: workerCommit.sha.substring(0, 7),
+				message: workerCommit.commit.message.split("\n")[0],
+				author: workerCommit.commit.author.name,
+				date: new Date(workerCommit.commit.author.date),
+				files,
+				edges,
+			};
+
+			commits.push(commit);
+
+			if (onCommit) {
+				onCommit(commit);
+			}
+		}
+
+		return {
+			commits,
+			hasMore: workerResponse.hasMore,
+			totalCount: workerResponse.totalCount,
+		};
+	}
+
+	/**
 	 * Build commit timeline from PRs incrementally
 	 * Calls onCommit callback for each PR processed, allowing progressive rendering
 	 */
@@ -442,7 +552,11 @@ export class GitHubApiService {
 		onCommit?: (commit: CommitData) => void,
 		onProgress?: (progress: LoadProgress) => void,
 		onSaveCache?: (commits: CommitData[]) => void,
-	): Promise<CommitData[]> {
+	): Promise<{
+		commits: CommitData[];
+		hasMore?: boolean;
+		totalCount?: number;
+	}> {
 		// Use worker if available, otherwise fetch from GitHub API
 		if (this.shouldUseWorker()) {
 			if (onProgress) {
@@ -456,6 +570,12 @@ export class GitHubApiService {
 
 			// Worker now returns commits directly, not PRs
 			const workerResponse = await this.fetchCommitsFromWorker();
+
+			console.log('[AUTOLOAD] Initial fetch response:', {
+				commits: workerResponse.commits.length,
+				totalCount: workerResponse.totalCount,
+				hasMore: workerResponse.hasMore,
+			});
 
 			if (onProgress) {
 				onProgress({
@@ -521,7 +641,11 @@ export class GitHubApiService {
 				}
 			}
 
-			return commits;
+			return {
+				commits,
+				hasMore: workerResponse.hasMore,
+				totalCount: workerResponse.totalCount,
+			};
 		}
 
 		// No worker - fetch PRs from GitHub API
@@ -597,7 +721,7 @@ export class GitHubApiService {
 			}
 		}
 
-		return commits;
+		return { commits };
 	}
 
 	/**
@@ -607,7 +731,11 @@ export class GitHubApiService {
 	async buildTimelineFromCommits(
 		onCommit?: (commit: CommitData) => void,
 		onProgress?: (progress: LoadProgress) => void,
-	): Promise<CommitData[]> {
+	): Promise<{
+		commits: CommitData[];
+		hasMore?: boolean;
+		totalCount?: number;
+	}> {
 		// First, fetch repository info to get default branch
 		const repoInfo = await this.fetchRepoInfo();
 		const defaultBranch = repoInfo.default_branch;
@@ -708,7 +836,7 @@ export class GitHubApiService {
 			}
 		}
 
-		return commits;
+		return { commits };
 	}
 
 	/**
@@ -717,6 +845,7 @@ export class GitHubApiService {
 	async buildTimelineFromPRs(
 		onProgress?: (progress: LoadProgress) => void,
 	): Promise<CommitData[]> {
-		return this.buildTimelineFromPRsIncremental(undefined, onProgress);
+		const result = await this.buildTimelineFromPRsIncremental(undefined, onProgress);
+		return result.commits;
 	}
 }

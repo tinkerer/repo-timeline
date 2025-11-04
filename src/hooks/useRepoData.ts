@@ -49,6 +49,8 @@ interface RepoDataState {
 		| "metadata"
 		| "incremental"
 		| "complete";
+	hasMoreCommits: boolean;
+	totalCommitsAvailable: number;
 }
 
 type RepoDataAction =
@@ -68,7 +70,13 @@ type RepoDataAction =
 	| { type: "SET_CACHE_STATUS"; status: CacheStatus | null }
 	| { type: "SET_REPO_SUMMARY"; summary: RepoSummary | null }
 	| { type: "SET_LOADING_STAGE"; stage: RepoDataState["loadingStage"] }
-	| { type: "RESET_COMMITS" };
+	| { type: "RESET_COMMITS" }
+	| {
+			type: "SET_PAGINATION";
+			hasMore: boolean;
+			totalAvailable: number;
+	  }
+	| { type: "APPEND_COMMITS"; commits: CommitData[] };
 
 function repoDataReducer(
 	state: RepoDataState,
@@ -148,6 +156,26 @@ function repoDataReducer(
 			return { ...state, loadingStage: action.stage };
 		case "RESET_COMMITS":
 			return { ...state, commits: [] };
+		case "SET_PAGINATION":
+			return {
+				...state,
+				hasMoreCommits: action.hasMore,
+				totalCommitsAvailable: action.totalAvailable,
+			};
+		case "APPEND_COMMITS": {
+			const newCommits = [...state.commits, ...action.commits];
+			// Update time range if needed
+			const times = action.commits.map((c) => c.date.getTime());
+			const newTimeRange = {
+				start: Math.min(state.timeRange.start, ...times),
+				end: Math.max(state.timeRange.end, ...times),
+			};
+			return {
+				...state,
+				commits: newCommits,
+				timeRange: newTimeRange,
+			};
+		}
 		default:
 			return state;
 	}
@@ -182,6 +210,8 @@ export function useRepoData({
 		cacheStatus: null,
 		repoSummary: null,
 		loadingStage: "initial",
+		hasMoreCommits: false,
+		totalCommitsAvailable: 0,
 	});
 
 	const gitServiceRef = useRef<GitService | null>(null);
@@ -267,10 +297,24 @@ export function useRepoData({
 				dispatch({ type: "SET_LOADING", loading: true });
 				dispatch({ type: "SET_LOAD_PROGRESS", progress: null });
 				try {
-					const commitsData = await gitService.getCommitHistory((progress) => {
+					const result = await gitService.getCommitHistory((progress) => {
 						dispatch({ type: "SET_LOAD_PROGRESS", progress });
 					}, forceRefresh);
-					dispatch({ type: "SET_COMMITS", commits: commitsData });
+
+					console.log('[AUTOLOAD] useRepoData received initial result:', {
+						commits: result.commits.length,
+						hasMore: result.hasMore,
+						totalCount: result.totalCount,
+					});
+
+					dispatch({ type: "SET_COMMITS", commits: result.commits });
+					if (result.hasMore !== undefined && result.totalCount !== undefined) {
+						dispatch({
+							type: "SET_PAGINATION",
+							hasMore: result.hasMore,
+							totalAvailable: result.totalCount,
+						});
+					}
 					dispatch({ type: "SET_FROM_CACHE", fromCache: true });
 					dispatch({ type: "SET_RATE_LIMITED_CACHE", rateLimitedCache: false });
 					dispatch({ type: "SET_LOADING", loading: false });
@@ -322,11 +366,11 @@ export function useRepoData({
 					// If we hit an error (like rate limiting), try to load from cache
 					if (cacheInfo.exists) {
 						try {
-							const cachedCommits = await gitService.getCommitHistory(
+							const cachedResult = await gitService.getCommitHistory(
 								undefined, // no progress updates needed
 								false, // don't force refresh
 							);
-							dispatch({ type: "SET_COMMITS", commits: cachedCommits });
+							dispatch({ type: "SET_COMMITS", commits: cachedResult.commits });
 							dispatch({ type: "SET_FROM_CACHE", fromCache: true });
 							dispatch({
 								type: "SET_RATE_LIMITED_CACHE",
@@ -384,9 +428,70 @@ export function useRepoData({
 		loadCommits();
 	}, [loadCommits]);
 
+	const loadMore = useCallback(async () => {
+		console.log('[AUTOLOAD] loadMore() called', {
+			hasGitService: !!gitServiceRef.current,
+			backgroundLoading: state.backgroundLoading,
+			commitsLength: state.commits.length,
+		});
+
+		if (!gitServiceRef.current || state.backgroundLoading) {
+			console.log('[AUTOLOAD] loadMore() skipped - no service or already loading');
+			return;
+		}
+
+		console.log('[AUTOLOAD] Starting background load...');
+		dispatch({ type: "SET_BACKGROUND_LOADING", loading: true });
+
+		try {
+			// Build existing file state from current commits
+			const existingFiles = new Map<string, number>();
+			if (state.commits.length > 0) {
+				const lastCommit = state.commits[state.commits.length - 1];
+				for (const file of lastCommit.files) {
+					existingFiles.set(file.path, file.size);
+				}
+			}
+
+			console.log('[AUTOLOAD] Calling gitService.loadMoreCommits with offset:', state.commits.length);
+			const result = await gitServiceRef.current.loadMoreCommits(
+				state.commits.length,
+				40,
+				existingFiles,
+				(commit) => {
+					console.log('[AUTOLOAD] Received commit:', commit.hash);
+					dispatch({ type: "APPEND_COMMITS", commits: [commit] });
+				},
+				(progress) => {
+					dispatch({ type: "SET_LOAD_PROGRESS", progress });
+				},
+			);
+
+			console.log('[AUTOLOAD] Load complete:', {
+				newCommits: result.commits.length,
+				hasMore: result.hasMore,
+				totalCount: result.totalCount,
+			});
+
+			dispatch({
+				type: "SET_PAGINATION",
+				hasMore: result.hasMore,
+				totalAvailable: result.totalCount,
+			});
+
+			dispatch({ type: "SET_BACKGROUND_LOADING", loading: false });
+			dispatch({ type: "SET_LOAD_PROGRESS", progress: null });
+		} catch (error) {
+			console.error('[AUTOLOAD] Error loading more commits:', error);
+			dispatch({ type: "SET_BACKGROUND_LOADING", loading: false });
+			dispatch({ type: "SET_LOAD_PROGRESS", progress: null });
+		}
+	}, [state.commits, state.backgroundLoading]);
+
 	return {
 		...state,
 		loadCommits,
+		loadMore,
 		setCurrentTime: (
 			timeOrUpdater: number | ((prevTime: number) => number),
 		) => {

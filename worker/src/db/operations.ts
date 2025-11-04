@@ -350,11 +350,12 @@ export async function getCachedCommits(
 	lastUpdated: number;
 	lastCommitSha: string | null;
 	defaultBranch: string;
+	totalCommitsAvailable: number;
 } | null> {
 	// Get repo metadata
 	const repo = await db
 		.prepare(
-			"SELECT id, last_updated, last_commit_sha, default_branch FROM repos WHERE full_name = ?",
+			"SELECT id, last_updated, last_commit_sha, default_branch, total_commits_available FROM repos WHERE full_name = ?",
 		)
 		.bind(fullName)
 		.first();
@@ -409,9 +410,10 @@ export async function getCachedCommits(
 
 	return {
 		commits: transformedCommits,
-		lastUpdated: repo.last_updated,
-		lastCommitSha: repo.last_commit_sha || null,
-		defaultBranch: repo.default_branch || "main",
+		lastUpdated: repo.last_updated as number,
+		lastCommitSha: (repo.last_commit_sha as string) || null,
+		defaultBranch: (repo.default_branch as string) || "main",
+		totalCommitsAvailable: (repo.total_commits_available as number) || 0,
 	};
 }
 
@@ -424,6 +426,7 @@ export async function storeCommitData(
 	name: string,
 	defaultBranch: string,
 	commits: Commit[],
+	totalCommitsAvailable?: number,
 	isUpdate = false,
 ): Promise<void> {
 	const fullName = `${owner}/${name}`;
@@ -432,18 +435,28 @@ export async function storeCommitData(
 
 	// Insert or update repo first
 	if (isUpdate) {
+		const updateFields = ["last_updated = ?", "last_commit_sha = ?", "default_branch = ?"];
+		const updateValues = [now, lastCommitSha, defaultBranch];
+
+		if (totalCommitsAvailable !== undefined) {
+			updateFields.push("total_commits_available = ?");
+			updateValues.push(totalCommitsAvailable);
+		}
+
+		updateValues.push(fullName);
+
 		await db
 			.prepare(
-				"UPDATE repos SET last_updated = ?, last_commit_sha = ?, default_branch = ? WHERE full_name = ?",
+				`UPDATE repos SET ${updateFields.join(", ")} WHERE full_name = ?`,
 			)
-			.bind(now, lastCommitSha, defaultBranch, fullName)
+			.bind(...updateValues)
 			.run();
 	} else {
 		await db
 			.prepare(`
-			INSERT INTO repos (owner, name, full_name, last_updated, last_commit_sha, default_branch, created_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?)
-			ON CONFLICT(full_name) DO UPDATE SET last_updated = ?, last_commit_sha = ?, default_branch = ?
+			INSERT INTO repos (owner, name, full_name, last_updated, last_commit_sha, default_branch, total_commits_available, created_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+			ON CONFLICT(full_name) DO UPDATE SET last_updated = ?, last_commit_sha = ?, default_branch = ?, total_commits_available = ?
 		`)
 			.bind(
 				owner,
@@ -452,10 +465,12 @@ export async function storeCommitData(
 				now,
 				lastCommitSha,
 				defaultBranch,
+				totalCommitsAvailable || 0,
 				now,
 				now,
 				lastCommitSha,
 				defaultBranch,
+				totalCommitsAvailable || 0,
 			)
 			.run();
 	}
@@ -531,7 +546,7 @@ export async function fetchAndCacheCommits(
 	token: string,
 	owner: string,
 	repo: string,
-): Promise<Commit[]> {
+): Promise<{ commits: Commit[]; totalCommitsAvailable: number }> {
 	const fullName = `${owner}/${repo}`;
 
 	// First, get the default branch
@@ -539,6 +554,11 @@ export async function fetchAndCacheCommits(
 	const defaultBranch = repoInfo.default_branch;
 
 	console.log(`Fetching commits from ${fullName} (${defaultBranch} branch)`);
+
+	// Get accurate total commit count efficiently (only 1 API call)
+	const { fetchCommitCount } = await import("../api/github");
+	const totalCommitCount = await fetchCommitCount(token, owner, repo, defaultBranch);
+	console.log(`Total commits in repo: ${totalCommitCount}`);
 
 	// Fetch commits from default branch
 	// Limit pages to avoid fetching too many commits
@@ -552,18 +572,18 @@ export async function fetchAndCacheCommits(
 	);
 
 	if (commitList.length === 0) {
-		return [];
+		return { commits: [], totalCommitsAvailable: totalCommitCount };
 	}
 
 	// Limit to prevent too many API calls - Cloudflare Workers has 50 subrequest limit
-	// We need: 1 for repo info, 1 for commit list, N for commit details
-	// So maximum N = 48, but let's be conservative and use 40
+	// We need: 1 for repo info, 1 for commit count, 1 for commit list, N for commit details
+	// So maximum N = 47, but let's be conservative and use 40
 	const maxCommits = 40;
 	const commitsToProcess = commitList.slice(0, maxCommits);
 	const commits: Commit[] = [];
 
 	console.log(
-		`Processing ${commitsToProcess.length} of ${commitList.length} commits`,
+		`Processing ${commitsToProcess.length} of ${commitList.length} commits (${totalCommitCount} total in repo)`,
 	);
 
 	// Fetch files for each commit
@@ -578,10 +598,10 @@ export async function fetchAndCacheCommits(
 		commits.push(commitDetails);
 	}
 
-	// Store in database
-	await storeCommitData(db, owner, repo, defaultBranch, commits);
+	// Store in database with accurate total available commits
+	await storeCommitData(db, owner, repo, defaultBranch, commits, totalCommitCount);
 
-	return commits;
+	return { commits, totalCommitsAvailable: totalCommitCount };
 }
 
 /**
@@ -612,12 +632,17 @@ export async function updateCommitData(
 
 		if (commitList.length === 0) {
 			console.log("No new commits, cache is up to date");
-			// Update timestamp anyway
+			// Update timestamp and total commits available
+			// Even if there are no new commits, we should check total available
+			// Use efficient commit count API
+			const { fetchCommitCount } = await import("../api/github");
+			const totalCommitCount = await fetchCommitCount(token, owner, repo, defaultBranch);
+			console.log(`Total commits in repo: ${totalCommitCount}`);
 			await db
 				.prepare(
-					"UPDATE repos SET last_updated = ? WHERE owner = ? AND name = ?",
+					"UPDATE repos SET last_updated = ?, total_commits_available = ? WHERE owner = ? AND name = ?",
 				)
-				.bind(Math.floor(Date.now() / 1000), owner, repo)
+				.bind(Math.floor(Date.now() / 1000), totalCommitCount, owner, repo)
 				.run();
 			return;
 		}
@@ -638,7 +663,11 @@ export async function updateCommitData(
 
 		if (commits.length > 0) {
 			console.log(`Found ${commits.length} new commits, updating cache`);
-			await storeCommitData(db, owner, repo, defaultBranch, commits, true);
+			// Update the total commits available with accurate count
+			const { fetchCommitCount } = await import("../api/github");
+			const totalCommitCount = await fetchCommitCount(token, owner, repo, defaultBranch);
+			console.log(`Total commits in repo: ${totalCommitCount}`);
+			await storeCommitData(db, owner, repo, defaultBranch, commits, totalCommitCount, true);
 		}
 	} catch (error) {
 		console.error("Error in background commit update:", error);

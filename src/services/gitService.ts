@@ -37,6 +37,51 @@ export class GitService {
 	}
 
 	/**
+	 * Load more commits with pagination
+	 */
+	async loadMoreCommits(
+		offset: number,
+		limit = 40,
+		existingFiles: Map<string, number> = new Map(),
+		onCommit?: (commit: CommitData) => void,
+		onProgress?: (progress: LoadProgress) => void,
+	): Promise<{
+		commits: CommitData[];
+		hasMore: boolean;
+		totalCount: number;
+	}> {
+		if (!this.githubService) {
+			this.githubService = new GitHubApiService(
+				this.repoPath,
+				this.token,
+				this.workerUrl,
+			);
+		}
+
+		const result = await this.githubService.loadMoreCommits(
+			offset,
+			limit,
+			existingFiles,
+			onCommit,
+			onProgress,
+		);
+
+		// Apply size change calculations
+		const calculatedCommits = this.calculateSizeChanges(result.commits);
+
+		// Update cache with all commits
+		const cacheKey = this.getCacheKey();
+		const existingCached = StorageService.loadCommits(cacheKey) || [];
+		const allCommits = [...existingCached, ...calculatedCommits];
+		StorageService.saveCommits(cacheKey, allCommits);
+
+		return {
+			...result,
+			commits: calculatedCommits,
+		};
+	}
+
+	/**
 	 * Get repository status from worker (GitHub state + cache state)
 	 */
 	// Status methods removed - use new /cache and /summary endpoints directly
@@ -95,29 +140,33 @@ export class GitService {
 		onProgress?: (progress: LoadProgress) => void,
 		forceRefresh = false,
 		onCommit?: (commit: CommitData) => void,
-	): Promise<CommitData[]> {
+	): Promise<{
+		commits: CommitData[];
+		hasMore?: boolean;
+		totalCount?: number;
+	}> {
 		const cacheKey = this.getCacheKey();
 
 		// Try to load from cache first
 		if (!forceRefresh) {
 			const cached = StorageService.loadCommits(cacheKey);
 			if (cached) {
-				return cached;
+				return { commits: cached };
 			}
 		}
 
 		// Fetch fresh data
 		try {
-			const commits = await this.fetchCommitsWithProgress(onProgress, onCommit);
+			const result = await this.fetchCommitsWithProgress(onProgress, onCommit);
 			// Save to cache
-			StorageService.saveCommits(cacheKey, commits);
-			return commits;
+			StorageService.saveCommits(cacheKey, result.commits);
+			return result;
 		} catch (error) {
 			console.error("Error fetching commits:", error);
 			// Try cache as fallback
 			const cached = StorageService.loadCommits(cacheKey);
 			if (cached) {
-				return cached;
+				return { commits: cached };
 			}
 			// Re-throw the error instead of returning demo data
 			throw error;
@@ -130,7 +179,11 @@ export class GitService {
 	private async fetchCommitsWithProgress(
 		onProgress?: (progress: LoadProgress) => void,
 		onCommit?: (commit: CommitData) => void,
-	): Promise<CommitData[]> {
+	): Promise<{
+		commits: CommitData[];
+		hasMore?: boolean;
+		totalCount?: number;
+	}> {
 		// Check if repoPath is in GitHub format (owner/repo)
 		if (/^[^/]+\/[^/]+$/.test(this.repoPath)) {
 			try {
@@ -140,7 +193,7 @@ export class GitService {
 					this.workerUrl,
 				);
 				const cacheKey = this.getCacheKey();
-				const commits =
+				const result =
 					await this.githubService.buildTimelineFromPRsIncremental(
 						onCommit
 							? (commit) => {
@@ -156,7 +209,18 @@ export class GitService {
 							StorageService.saveCommits(cacheKey, calculated);
 						},
 					);
-				return this.calculateSizeChanges(commits);
+
+				console.log('[AUTOLOAD] GitService initial load result:', {
+					commits: result.commits.length,
+					hasMore: result.hasMore,
+					totalCount: result.totalCount,
+				});
+
+				return {
+					commits: this.calculateSizeChanges(result.commits),
+					hasMore: result.hasMore,
+					totalCount: result.totalCount,
+				};
 			} catch (error) {
 				console.error("GitHub API error:", error);
 				throw error;
@@ -175,7 +239,7 @@ export class GitService {
 
 			// Simulate incremental parsing for progress
 			const commits = this.parseCommitsWithProgress(data, onProgress);
-			return commits;
+			return { commits };
 		} catch (error) {
 			// Re-throw error - no demo data fallback
 			throw new Error(

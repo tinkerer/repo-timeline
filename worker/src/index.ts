@@ -144,7 +144,12 @@ export default {
 
 				// Apply pagination to cached data
 				const paginatedCommits = cached.commits.slice(offset, offset + limit);
-				const hasMore = offset + limit < cached.commits.length;
+				// hasMore is true if either:
+			// 1. There are more cached commits to paginate through, OR
+			// 2. There are more commits available from GitHub than we've cached
+			const hasMore =
+				(offset + limit < cached.commits.length) ||
+				(cached.totalCommitsAvailable > cached.commits.length);
 
 				// Trigger background update if cache is old (> 1 hour)
 				const cacheAge = Date.now() / 1000 - cached.lastUpdated;
@@ -170,7 +175,7 @@ export default {
 						"Content-Type": "application/json",
 						"X-Cache": "HIT",
 						"X-Cache-Age": Math.round(cacheAge).toString(),
-						"X-Total-Count": cached.commits.length.toString(),
+						"X-Total-Count": Math.max(cached.commits.length, cached.totalCommitsAvailable).toString(),
 						"X-Has-More": hasMore.toString(),
 						"X-Offset": offset.toString(),
 						"X-Limit": limit.toString(),
@@ -180,7 +185,7 @@ export default {
 
 			// No cache - fetch synchronously for first request
 			console.log(`No cache for ${fullName}, fetching commits from GitHub`);
-			const commits = await fetchAndCacheCommits(
+			const result = await fetchAndCacheCommits(
 				env.DB,
 				tokenRotator.getNextToken(),
 				owner,
@@ -188,15 +193,23 @@ export default {
 			);
 
 			// Apply pagination
-			const paginatedCommits = commits.slice(offset, offset + limit);
-			const hasMore = offset + limit < commits.length;
+			const paginatedCommits = result.commits.slice(offset, offset + limit);
+			// hasMore is true if either:
+			// 1. There are more cached commits to paginate through, OR
+			// 2. There are more commits available from GitHub than we've cached
+			const hasMore =
+				offset + limit < result.commits.length ||
+				result.totalCommitsAvailable > result.commits.length;
 
 			return new Response(JSON.stringify(paginatedCommits), {
 				headers: {
 					...corsHeaders,
 					"Content-Type": "application/json",
 					"X-Cache": "MISS",
-					"X-Total-Count": commits.length.toString(),
+					"X-Total-Count": Math.max(
+						result.commits.length,
+						result.totalCommitsAvailable,
+					).toString(),
 					"X-Has-More": hasMore.toString(),
 					"X-Offset": offset.toString(),
 					"X-Limit": limit.toString(),

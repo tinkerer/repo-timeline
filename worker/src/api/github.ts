@@ -34,6 +34,61 @@ export async function fetchRepoInfo(
 }
 
 /**
+ * Get total commit count for a branch by parsing Link header
+ * This is efficient - only makes 1 API call with per_page=1
+ */
+export async function fetchCommitCount(
+	token: string,
+	owner: string,
+	repo: string,
+	branch: string,
+): Promise<number> {
+	// Request just 1 commit to get Link header with pagination info
+	const url = `https://api.github.com/repos/${owner}/${repo}/commits?sha=${branch}&per_page=1&page=1`;
+
+	const response = await fetch(url, {
+		headers: {
+			Authorization: `Bearer ${token}`,
+			Accept: "application/vnd.github.v3+json",
+			"User-Agent": "Repo-Timeline-Worker",
+		},
+	});
+
+	if (!response.ok) {
+		if (response.status === 404) {
+			throw new Error(`Repository ${owner}/${repo} or branch ${branch} not found`);
+		}
+		if (response.status === 403) {
+			throw new Error("GitHub API rate limit exceeded");
+		}
+		throw new Error(`GitHub API error: ${response.status}`);
+	}
+
+	// Parse Link header to get last page number
+	// Example: Link: <https://api.github.com/repositories/123/commits?per_page=1&page=2>; rel="next", <https://api.github.com/repositories/123/commits?per_page=1&page=117>; rel="last"
+	const linkHeader = response.headers.get("Link");
+
+	if (!linkHeader) {
+		// No Link header means there's only 1 page (1 commit total)
+		const commits = await response.json();
+		return commits.length;
+	}
+
+	// Parse the "last" link to get total page count
+	const lastLinkMatch = linkHeader.match(/<[^>]+[?&]page=(\d+)[^>]*>;\s*rel="last"/);
+
+	if (lastLinkMatch) {
+		const lastPage = parseInt(lastLinkMatch[1], 10);
+		// Since we requested 1 per page, last page number = total commits
+		return lastPage;
+	}
+
+	// Fallback: no "last" link means we're on the last page
+	const commits = await response.json();
+	return commits.length;
+}
+
+/**
  * Fetch commits from default branch
  */
 export async function fetchCommits(
