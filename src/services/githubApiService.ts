@@ -3,12 +3,12 @@ import type {
 	GitHubPR,
 	GitHubCommit,
 	GitHubCommitFile,
-	GitHubWorkerCommit,
 	GitHubPRFile,
 } from "../types/github";
 import { FileStateTracker } from "../utils/fileStateTracker";
 import { FILE_TREE_BUILDER_VERSION } from "../utils/fileTreeBuilder";
 import { buildCommitFromFileState } from "../utils/commitBuilder";
+import { WorkerApiService } from "./workerApiService";
 
 console.log(`📦 Loaded fileTreeBuilder version: ${FILE_TREE_BUILDER_VERSION}`);
 
@@ -23,21 +23,25 @@ export class GitHubApiService {
 	private requestDelay = 1000; // 1 second between requests to avoid rate limiting
 	private token?: string;
 	private lastRateLimit: RateLimitInfo | null = null;
-	private workerUrl?: string;
+	private workerService?: WorkerApiService;
 
 	constructor(repoPath: string, token?: string, workerUrl?: string) {
 		const [owner, repo] = repoPath.split("/");
 		this.owner = owner;
 		this.repo = repo;
 		this.token = token;
-		this.workerUrl = workerUrl;
+
+		// Initialize WorkerApiService if workerUrl is provided
+		if (workerUrl) {
+			this.workerService = new WorkerApiService(workerUrl, owner, repo);
+		}
 	}
 
 	/**
 	 * Check if we should use the worker for this request
 	 */
 	private shouldUseWorker(): boolean {
-		return !!this.workerUrl;
+		return !!this.workerService;
 	}
 
 	/**
@@ -51,24 +55,11 @@ export class GitHubApiService {
 			date: string;
 		}>
 	> {
-		if (!this.workerUrl) {
+		if (!this.workerService) {
 			throw new Error("Worker URL not configured");
 		}
 
-		const url = `${this.workerUrl}/api/repo/${this.owner}/${this.repo}/metadata`;
-		const response = await fetch(url);
-
-		if (!response.ok) {
-			const error = await response
-				.json()
-				.catch(() => ({ error: "Unknown error" }));
-			throw new Error(
-				error.error || `Worker request failed: ${response.status}`,
-			);
-		}
-
-		const data = await response.json();
-		return data;
+		return this.workerService.fetchMetadata();
 	}
 
 	/**
@@ -86,31 +77,11 @@ export class GitHubApiService {
 		};
 		status: "ready" | "partial" | "fetching";
 	}> {
-		if (!this.workerUrl) {
+		if (!this.workerService) {
 			throw new Error("Worker URL required for cache status");
 		}
 
-		const url = `${this.workerUrl}/api/repo/${this.owner}/${this.repo}/cache`;
-
-		const response = await fetch(url);
-
-		if (!response.ok) {
-			const error = await response
-				.json()
-				.catch(() => ({ error: "Unknown error" }));
-			throw new Error(
-				error.error || `Cache status request failed: ${response.status}`,
-			);
-		}
-
-		const data = await response.json();
-
-		const cacheStatus = {
-			cache: data.cache,
-			status: data.status,
-		};
-
-		return cacheStatus;
+		return this.workerService.fetchCacheStatus();
 	}
 
 	/**
@@ -123,55 +94,22 @@ export class GitHubApiService {
 			firstMergedPR: { number: number; merged_at: string } | null;
 		};
 	}> {
-		if (!this.workerUrl) {
+		if (!this.workerService) {
 			throw new Error("Worker URL required for summary");
 		}
 
-		const url = `${this.workerUrl}/api/repo/${this.owner}/${this.repo}/summary`;
-
-		const response = await fetch(url);
-
-		if (!response.ok) {
-			const error = await response
-				.json()
-				.catch(() => ({ error: "Unknown error" }));
-			throw new Error(
-				error.error || `Summary request failed: ${response.status}`,
-			);
-		}
-
-		const data = await response.json();
-
-		return { github: data.github };
+		return this.workerService.fetchRepoSummary();
 	}
 
 	/**
 	 * Fetch a single PR with files from Cloudflare Worker (instant from cache!)
 	 */
 	async fetchSinglePR(prNumber: number): Promise<GitHubPR | null> {
-		if (!this.workerUrl) {
+		if (!this.workerService) {
 			throw new Error("Worker URL required for single PR fetch");
 		}
 
-		const url = `${this.workerUrl}/api/repo/${this.owner}/${this.repo}/pr/${prNumber}`;
-
-		const response = await fetch(url);
-
-		if (response.status === 404) {
-			return null;
-		}
-
-		if (!response.ok) {
-			const error = await response
-				.json()
-				.catch(() => ({ error: "Unknown error" }));
-			throw new Error(
-				error.error || `Single PR request failed: ${response.status}`,
-			);
-		}
-
-		const data = await response.json();
-		return data;
+		return this.workerService.fetchSinglePR(prNumber);
 	}
 
 	/**
@@ -181,52 +119,17 @@ export class GitHubApiService {
 		offset = 0,
 		limit = 40,
 	): Promise<{
-		commits: GitHubWorkerCommit[];
+		commits: import("../types/github").GitHubWorkerCommit[];
 		totalCount: number;
 		hasMore: boolean;
 		offset: number;
 		limit: number;
 	}> {
-		if (!this.workerUrl) {
+		if (!this.workerService) {
 			throw new Error("Worker URL not configured");
 		}
 
-		const url = `${this.workerUrl}/api/repo/${this.owner}/${this.repo}?offset=${offset}&limit=${limit}`;
-		const response = await fetch(url);
-
-		if (!response.ok) {
-			const error = await response
-				.json()
-				.catch(() => ({ error: "Unknown error" }));
-			throw new Error(
-				error.error || `Worker request failed: ${response.status}`,
-			);
-		}
-
-		const commits = await response.json();
-
-		// Parse pagination headers
-		const totalCount = Number.parseInt(
-			response.headers.get("X-Total-Count") || "0",
-			10,
-		);
-		const hasMore = response.headers.get("X-Has-More") === "true";
-		const responseOffset = Number.parseInt(
-			response.headers.get("X-Offset") || "0",
-			10,
-		);
-		const responseLimit = Number.parseInt(
-			response.headers.get("X-Limit") || "40",
-			10,
-		);
-
-		return {
-			commits,
-			totalCount,
-			hasMore,
-			offset: responseOffset,
-			limit: responseLimit,
-		};
+		return this.workerService.fetchCommits(offset, limit);
 	}
 
 	getRateLimitInfo(): RateLimitInfo | null {
