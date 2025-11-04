@@ -71,14 +71,12 @@ export class StorageService {
 
 			// Validate cache version
 			if (data.version !== CACHE_VERSION) {
-				console.log("Cache version mismatch, invalidating cache");
 				this.clearCache(repoKey);
 				return null;
 			}
 
 			// Check if cache is expired
 			if (Date.now() - data.lastUpdated > CACHE_EXPIRY_MS) {
-				console.log("Cache expired, invalidating");
 				this.clearCache(repoKey);
 				return null;
 			}
@@ -163,7 +161,6 @@ export class StorageService {
 			repoCaches.sort((a, b) => a.timestamp - b.timestamp);
 			if (repoCaches.length > 0) {
 				localStorage.removeItem(repoCaches[0].key);
-				console.log("Cleared oldest cache:", repoCaches[0].key);
 			}
 		} catch (error) {
 			console.error("Failed to clear oldest cache:", error);

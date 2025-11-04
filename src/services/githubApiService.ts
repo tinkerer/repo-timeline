@@ -53,12 +53,6 @@ export class GitHubApiService {
 		this.repo = repo;
 		this.token = token;
 		this.workerUrl = workerUrl;
-		console.log("GitHubApiService initialized:", {
-			repoPath,
-			hasToken: !!token,
-			workerUrl,
-			willUseWorker: !!workerUrl,
-		});
 	}
 
 	/**
@@ -84,7 +78,6 @@ export class GitHubApiService {
 		}
 
 		const url = `${this.workerUrl}/api/repo/${this.owner}/${this.repo}/metadata`;
-		console.log("Fetching metadata from:", url);
 		const response = await fetch(url);
 
 		if (!response.ok) {
@@ -97,7 +90,6 @@ export class GitHubApiService {
 		}
 
 		const data = await response.json();
-		console.log(`Fetched ${data.length} PRs metadata`);
 		return data;
 	}
 
@@ -120,10 +112,8 @@ export class GitHubApiService {
 		}
 
 		const url = `${this.workerUrl}/api/repo/${this.owner}/${this.repo}/cache`;
-		console.log("Fetching cache status from:", url);
 
 		const response = await fetch(url);
-		console.log("Response status:", response.status, response.statusText);
 
 		if (!response.ok) {
 			const error = await response
@@ -135,16 +125,12 @@ export class GitHubApiService {
 		}
 
 		const data = await response.json();
-		console.log("fetchCacheStatus response data:", data);
 
 		const cacheStatus = {
 			cache: data.cache,
 			status: data.status,
 		};
 
-		console.log(
-			`Cache status: ${cacheStatus.cache.cachedPRs} cached PRs - ${cacheStatus.status}`,
-		);
 		return cacheStatus;
 	}
 
@@ -163,7 +149,6 @@ export class GitHubApiService {
 		}
 
 		const url = `${this.workerUrl}/api/repo/${this.owner}/${this.repo}/summary`;
-		console.log("Fetching repo summary from:", url);
 
 		const response = await fetch(url);
 
@@ -177,7 +162,6 @@ export class GitHubApiService {
 		}
 
 		const data = await response.json();
-		console.log("fetchRepoSummary response data:", data);
 
 		return { github: data.github };
 	}
@@ -191,7 +175,6 @@ export class GitHubApiService {
 		}
 
 		const url = `${this.workerUrl}/api/repo/${this.owner}/${this.repo}/pr/${prNumber}`;
-		console.log("Fetching single PR from:", url);
 
 		const response = await fetch(url);
 
@@ -209,7 +192,6 @@ export class GitHubApiService {
 		}
 
 		const data = await response.json();
-		console.log(`Fetched PR #${prNumber}:`, data);
 		return data;
 	}
 
@@ -433,7 +415,6 @@ export class GitHubApiService {
 
 		if (prs.length === 0) {
 			// Fall back to fetching commits directly if no PRs found
-			console.log("No merged PRs found, falling back to commits");
 			return this.buildTimelineFromCommits(onCommit, onProgress);
 		}
 
