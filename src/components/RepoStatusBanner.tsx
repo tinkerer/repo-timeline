@@ -66,7 +66,9 @@ export function RepoStatusBanner({
 						<strong>Cached:</strong> {cache.cachedPRs} PRs
 						{cache.exists && github.estimatedTotalPRs > 0 && (
 							<span className="ml-1 text-xs opacity-75">
-								({Math.round((cache.cachedPRs / github.estimatedTotalPRs) * 100)}%)
+								(
+								{Math.round((cache.cachedPRs / github.estimatedTotalPRs) * 100)}
+								%)
 							</span>
 						)}
 						{cache.ageSeconds && (

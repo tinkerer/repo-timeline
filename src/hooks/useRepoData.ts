@@ -42,7 +42,12 @@ interface RepoDataState {
 	repoStatus: RepoStatus | null;
 	cacheStatus: CacheStatus | null;
 	repoSummary: RepoSummary | null;
-	loadingStage: "initial" | "cache-check" | "metadata" | "incremental" | "complete";
+	loadingStage:
+		| "initial"
+		| "cache-check"
+		| "metadata"
+		| "incremental"
+		| "complete";
 }
 
 type RepoDataAction =
@@ -185,11 +190,15 @@ export function useRepoData({
 		if (!workerUrl || testMode) return;
 
 		const loadInstantFeedback = async () => {
-			console.log("[useRepoData Stage 1] Fetching cache status and repo summary");
+			console.log(
+				"[useRepoData Stage 1] Fetching cache status and repo summary",
+			);
 			dispatch({ type: "SET_LOADING_STAGE", stage: "cache-check" });
 
 			try {
-				const { GitHubApiService } = await import("../services/githubApiService");
+				const { GitHubApiService } = await import(
+					"../services/githubApiService"
+				);
 				const githubApiService = new GitHubApiService(
 					repoPath,
 					undefined,
