@@ -35,6 +35,18 @@ export interface GitHubCommitFile {
 	previous_filename?: string;
 }
 
+export interface GitHubWorkerCommit {
+	sha: string;
+	commit: {
+		message: string;
+		author: {
+			name: string;
+			date: string;
+		};
+	};
+	files?: GitHubCommitFile[];
+}
+
 export interface GitHubPRFile {
 	filename: string;
 	status: "added" | "removed" | "modified" | "renamed";
@@ -206,9 +218,9 @@ export class GitHubApiService {
 	}
 
 	/**
-	 * Fetch data from Cloudflare Worker
+	 * Fetch commit data from Cloudflare Worker
 	 */
-	private async fetchFromWorker(): Promise<GitHubPR[]> {
+	private async fetchCommitsFromWorker(): Promise<GitHubWorkerCommit[]> {
 		if (!this.workerUrl) {
 			throw new Error("Worker URL not configured");
 		}
@@ -398,8 +410,6 @@ export class GitHubApiService {
 		onSaveCache?: (commits: CommitData[]) => void,
 	): Promise<CommitData[]> {
 		// Use worker if available, otherwise fetch from GitHub API
-		let prs: GitHubPR[];
-
 		if (this.shouldUseWorker()) {
 			if (onProgress) {
 				onProgress({
@@ -410,27 +420,85 @@ export class GitHubApiService {
 				});
 			}
 
-			prs = await this.fetchFromWorker();
+			// Worker now returns commits directly, not PRs
+			const workerCommits = await this.fetchCommitsFromWorker();
 
 			if (onProgress) {
 				onProgress({
-					loaded: prs.length,
-					total: prs.length,
+					loaded: workerCommits.length,
+					total: workerCommits.length,
 					percentage: 50,
-					message: `Loaded ${prs.length} PRs from cache`,
+					message: `Loaded ${workerCommits.length} commits from cache`,
 				});
 			}
-		} else {
-			// Fetch all merged PRs from GitHub API
-			prs = await this.fetchMergedPRs((progress) => {
+
+			// Process commits from worker
+			const commits: CommitData[] = [];
+			const fileStateTracker = new FileStateTracker();
+
+			for (let i = 0; i < workerCommits.length; i++) {
+				const workerCommit = workerCommits[i];
+
 				if (onProgress) {
 					onProgress({
-						...progress,
-						percentage: 10,
+						loaded: i + 1,
+						total: workerCommits.length,
+						percentage: 50 + Math.round((i / workerCommits.length) * 50),
+						message: `Processing commit ${i + 1}/${workerCommits.length}`,
 					});
 				}
-			});
+
+				// Update file state from commit files
+				if (workerCommit.files && workerCommit.files.length > 0) {
+					const prFiles: GitHubPRFile[] = workerCommit.files.map((file) => ({
+						filename: file.filename,
+						status: file.status,
+						additions: file.additions,
+						deletions: file.deletions,
+						changes: file.changes,
+						previous_filename: file.previous_filename,
+					}));
+
+					fileStateTracker.updateFromPRFiles(prFiles);
+				}
+
+				// Build commit snapshot from current file state
+				const fileData = fileStateTracker.getFileData();
+				const files = buildFileTree(fileData);
+				const edges = buildEdges(fileData);
+
+				const commit: CommitData = {
+					hash: workerCommit.sha.substring(0, 7),
+					message: workerCommit.commit.message.split("\n")[0],
+					author: workerCommit.commit.author.name,
+					date: new Date(workerCommit.commit.author.date),
+					files,
+					edges,
+				};
+
+				commits.push(commit);
+
+				if (onCommit) {
+					onCommit(commit);
+				}
+
+				if (onSaveCache && (i % 5 === 0 || i === workerCommits.length - 1)) {
+					onSaveCache([...commits]);
+				}
+			}
+
+			return commits;
 		}
+
+		// No worker - fetch PRs from GitHub API
+		const prs = await this.fetchMergedPRs((progress) => {
+			if (onProgress) {
+				onProgress({
+					...progress,
+					percentage: 10,
+				});
+			}
+		});
 
 		if (prs.length === 0) {
 			// Fall back to fetching commits directly if no PRs found

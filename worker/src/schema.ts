@@ -119,6 +119,44 @@ export const RepoParamsSchema = z.object({
 
 export type RepoParams = z.infer<typeof RepoParamsSchema>;
 
+// GitHub Commit schemas (for new commit-based API)
+export const GitHubCommitAuthorSchema = z.object({
+	name: z.string(),
+	email: z.string().optional(),
+	date: z.string(),
+});
+
+export const GitHubCommitDetailsSchema = z.object({
+	message: z.string(),
+	author: GitHubCommitAuthorSchema,
+	committer: GitHubCommitAuthorSchema.optional(),
+});
+
+export const GitHubCommitFileSchema = z.object({
+	filename: z.string(),
+	status: z.string(),
+	additions: z.number(),
+	deletions: z.number(),
+	changes: z.number().optional(),
+	patch: z.string().optional(),
+	previous_filename: z.string().optional(),
+});
+
+export const GitHubCommitSchema = z.object({
+	sha: z.string(),
+	commit: GitHubCommitDetailsSchema,
+	files: z.array(GitHubCommitFileSchema).optional(),
+	url: z.string().optional(),
+	html_url: z.string().optional(),
+	comments_url: z.string().optional(),
+	author: z.any().optional(),
+	committer: z.any().optional(),
+	parents: z.array(z.any()).optional(),
+});
+
+export type GitHubCommit = z.infer<typeof GitHubCommitSchema>;
+export type GitHubCommitFile = z.infer<typeof GitHubCommitFileSchema>;
+
 // Error response schema
 export const ErrorResponseSchema = z.object({
 	error: z.string(),
