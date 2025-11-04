@@ -24,7 +24,7 @@ export function usePlaybackTimer({
 	onTimeChange,
 	onPlayingChange,
 }: UsePlaybackTimerOptions) {
-	const timerRef = useRef<number | null>(null);
+	const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
 	useEffect(() => {
 		if (isPlaying && hasCommits) {
