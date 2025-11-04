@@ -5,9 +5,7 @@
 
 import type { Env } from "../types";
 import { TokenRotator } from "../utils/tokenRotator";
-import { getCachedData } from "../db/operations";
-import { fetchAndCachePartialRepo } from "../db/operations";
-import { fetchMergedPRs } from "../api/github";
+import { getCachedCommits, fetchAndCacheCommits } from "../db/operations";
 
 /**
  * Handle cache status request - INSTANT response, just D1 query
@@ -24,13 +22,13 @@ export async function handleCacheStatusRequest(
 
 	try {
 		// Get cache status (instant D1 query)
-		const cached = await getCachedData(env.DB, fullName);
-		const cachedPRCount = cached ? cached.prs.length : 0;
+		const cached = await getCachedCommits(env.DB, fullName);
+		const cachedCommitCount = cached ? cached.commits.length : 0;
 		const cacheAge = cached ? Date.now() / 1000 - cached.lastUpdated : null;
 
 		// Get metadata from cache if available
-		const firstPR = cached?.prs[0];
-		const lastPR = cached?.prs[cachedPRCount - 1];
+		const firstCommit = cached?.commits[0];
+		const lastCommit = cached?.commits[cachedCommitCount - 1];
 
 		// Trigger background cache population if cache is empty or old
 		const tokenRotator = new TokenRotator(env.GITHUB_TOKENS);
@@ -39,14 +37,11 @@ export async function handleCacheStatusRequest(
 				`Cache ${!cached ? "missing" : "old"} for ${fullName}, triggering background fetch`,
 			);
 			ctx.waitUntil(
-				fetchAndCachePartialRepo(
+				fetchAndCacheCommits(
 					env.DB,
 					tokenRotator.getNextToken(),
 					owner,
 					repo,
-					cached?.lastPrNumber || 0,
-					45, // Fetch up to 45 PRs (subrequest limit)
-					fetchMergedPRs,
 				),
 			);
 		}
@@ -56,23 +51,24 @@ export async function handleCacheStatusRequest(
 			repo,
 			cache: {
 				exists: !!cached,
-				cachedPRs: cachedPRCount,
+				cachedCommits: cachedCommitCount,
 				ageSeconds: cacheAge ? Math.round(cacheAge) : null,
-				lastPRNumber: cached?.lastPrNumber || null,
-				firstPR: firstPR
+				lastCommitSha: cached?.lastCommitSha || null,
+				defaultBranch: cached?.defaultBranch || null,
+				firstCommit: firstCommit
 					? {
-							number: firstPR.number,
-							merged_at: firstPR.merged_at,
+							sha: firstCommit.sha.substring(0, 7),
+							date: firstCommit.commit.author.date,
 						}
 					: null,
-				lastPR: lastPR
+				lastCommit: lastCommit
 					? {
-							number: lastPR.number,
-							merged_at: lastPR.merged_at,
+							sha: lastCommit.sha.substring(0, 7),
+							date: lastCommit.commit.author.date,
 						}
 					: null,
 			},
-			status: !cached ? "fetching" : cachedPRCount < 10 ? "partial" : "ready",
+			status: !cached ? "fetching" : cachedCommitCount < 10 ? "partial" : "ready",
 		};
 
 		return new Response(JSON.stringify(response), {

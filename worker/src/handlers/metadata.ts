@@ -1,14 +1,14 @@
 /**
  * Metadata endpoint handler
- * Handles fetching PR metadata without files
+ * Handles fetching commit metadata without file details
  */
 
 import type { Env } from "../types";
 import { TokenRotator } from "../utils/tokenRotator";
-import { fetchAllMergedPRsMetadata } from "../api/github";
+import { fetchRepoInfo, fetchCommits } from "../api/github";
 
 /**
- * Handle metadata request - fetches all merged PRs without files (fast!)
+ * Handle metadata request - fetches all commits without file details (fast!)
  */
 export async function handleMetadataRequest(
 	env: Env,
@@ -20,14 +20,32 @@ export async function handleMetadataRequest(
 	const tokenRotator = new TokenRotator(env.GITHUB_TOKENS);
 
 	try {
-		// Fetch all merged PRs without files (fast!)
-		const prs = await fetchAllMergedPRsMetadata(
+		// Get repository default branch
+		const repoInfo = await fetchRepoInfo(
 			tokenRotator.getNextToken(),
 			owner,
 			repo,
 		);
 
-		return new Response(JSON.stringify(prs), {
+		// Fetch commits without file details (fast!)
+		const commits = await fetchCommits(
+			tokenRotator.getNextToken(),
+			owner,
+			repo,
+			repoInfo.default_branch,
+			undefined,
+			5, // Fetch up to 5 pages (500 commits)
+		);
+
+		// Return commits with basic metadata only (no files)
+		const metadata = commits.map((commit) => ({
+			sha: commit.sha,
+			message: commit.commit?.message || "",
+			author: commit.commit?.author?.name || "",
+			date: commit.commit?.author?.date || "",
+		}));
+
+		return new Response(JSON.stringify(metadata), {
 			headers: {
 				...corsHeaders,
 				"Content-Type": "application/json",
