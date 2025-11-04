@@ -198,24 +198,23 @@ export class GitService {
 					this.workerUrl,
 				);
 				const cacheKey = this.getCacheKey();
-				const result =
-					await this.githubService.buildTimelineFromPRsIncremental(
-						onCommit
-							? (commit) => {
-									// Apply size change calculations incrementally
-									const calculated = this.calculateSizeChanges([commit]);
-									onCommit(calculated[0]);
-								}
-							: undefined,
-						onProgress,
-						(partialCommits) => {
-							// Save to cache incrementally
-							const calculated = this.calculateSizeChanges(partialCommits);
-							StorageService.saveCommits(cacheKey, calculated);
-						},
-					);
+				const result = await this.githubService.buildTimelineFromPRsIncremental(
+					onCommit
+						? (commit) => {
+								// Apply size change calculations incrementally
+								const calculated = this.calculateSizeChanges([commit]);
+								onCommit(calculated[0]);
+							}
+						: undefined,
+					onProgress,
+					(partialCommits) => {
+						// Save to cache incrementally
+						const calculated = this.calculateSizeChanges(partialCommits);
+						StorageService.saveCommits(cacheKey, calculated);
+					},
+				);
 
-				console.log('[AUTOLOAD] GitService initial load result:', {
+				console.log("[AUTOLOAD] GitService initial load result:", {
 					commits: result.commits.length,
 					hasMore: result.hasMore,
 					totalCount: result.totalCount,

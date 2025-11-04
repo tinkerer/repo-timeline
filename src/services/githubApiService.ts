@@ -1,8 +1,8 @@
 import type { CommitData, LoadProgress, RateLimitInfo } from "../types";
-import type { GitHubPR, GitHubCommit, GitHubPRFile } from "../types/github";
+import type { GitHubCommit, GitHubPR, GitHubPRFile } from "../types/github";
+import { buildCommitFromFileState } from "../utils/commitBuilder";
 import { FileStateTracker } from "../utils/fileStateTracker";
 import { FILE_TREE_BUILDER_VERSION } from "../utils/fileTreeBuilder";
-import { buildCommitFromFileState } from "../utils/commitBuilder";
 import { WorkerApiService } from "./workerApiService";
 
 console.log(`📦 Loaded fileTreeBuilder version: ${FILE_TREE_BUILDER_VERSION}`);
@@ -418,7 +418,7 @@ export class GitHubApiService {
 			// Worker now returns commits directly, not PRs
 			const workerResponse = await this.fetchCommitsFromWorker();
 
-			console.log('[AUTOLOAD] Initial fetch response:', {
+			console.log("[AUTOLOAD] Initial fetch response:", {
 				commits: workerResponse.commits.length,
 				totalCount: workerResponse.totalCount,
 				hasMore: workerResponse.hasMore,
@@ -444,7 +444,8 @@ export class GitHubApiService {
 					onProgress({
 						loaded: i + 1,
 						total: workerResponse.commits.length,
-						percentage: 50 + Math.round((i / workerResponse.commits.length) * 50),
+						percentage:
+							50 + Math.round((i / workerResponse.commits.length) * 50),
 						message: `Processing commit ${i + 1}/${workerResponse.commits.length}`,
 					});
 				}
@@ -478,7 +479,10 @@ export class GitHubApiService {
 					onCommit(commit);
 				}
 
-				if (onSaveCache && (i % 5 === 0 || i === workerResponse.commits.length - 1)) {
+				if (
+					onSaveCache &&
+					(i % 5 === 0 || i === workerResponse.commits.length - 1)
+				) {
 					onSaveCache([...commits]);
 				}
 			}
@@ -675,7 +679,10 @@ export class GitHubApiService {
 	async buildTimelineFromPRs(
 		onProgress?: (progress: LoadProgress) => void,
 	): Promise<CommitData[]> {
-		const result = await this.buildTimelineFromPRsIncremental(undefined, onProgress);
+		const result = await this.buildTimelineFromPRsIncremental(
+			undefined,
+			onProgress,
+		);
 		return result.commits;
 	}
 }

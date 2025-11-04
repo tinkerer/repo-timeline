@@ -6,10 +6,7 @@ interface FileEdge3DProps {
 	nodes: Map<string, FileNode>;
 }
 
-export function FileEdge3D({
-	edge,
-	nodes,
-}: FileEdge3DProps) {
+export function FileEdge3D({ edge, nodes }: FileEdge3DProps) {
 	const source = nodes.get(edge.source);
 	const target = nodes.get(edge.target);
 
@@ -43,7 +40,8 @@ export function FileEdge3D({
 
 	// Only skip if distance is truly zero AND both nodes have valid positions
 	// (not just defaulting to 0,0,0)
-	if (distance < 0.1 && source.x !== undefined && target.x !== undefined) return null;
+	if (distance < 0.1 && source.x !== undefined && target.x !== undefined)
+		return null;
 
 	direction.normalize();
 

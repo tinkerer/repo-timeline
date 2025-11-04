@@ -37,8 +37,14 @@ export function buildCommitFromFileState(
 			orphanedNodes.map((n) => `${n.path} (${n.type})`),
 		);
 		console.warn("  File data:", fileData);
-		console.warn("  Nodes:", files.map((n) => `${n.path} (${n.type})`));
-		console.warn("  Edges:", edges.map((e) => `${e.source} → ${e.target}`));
+		console.warn(
+			"  Nodes:",
+			files.map((n) => `${n.path} (${n.type})`),
+		);
+		console.warn(
+			"  Edges:",
+			edges.map((e) => `${e.source} → ${e.target}`),
+		);
 	}
 
 	return {

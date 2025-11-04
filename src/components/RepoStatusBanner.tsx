@@ -62,7 +62,11 @@ export function RepoStatusBanner({
 
 	// Auto-hide banner when ready (after 3 seconds)
 	useEffect(() => {
-		if (effectiveRecommendation === "ready" && !backgroundLoading && isVisible) {
+		if (
+			effectiveRecommendation === "ready" &&
+			!backgroundLoading &&
+			isVisible
+		) {
 			// Wait 3 seconds, then hide
 			const hideTimer = setTimeout(() => {
 				onVisibilityChange(false);
@@ -71,10 +75,18 @@ export function RepoStatusBanner({
 			return () => clearTimeout(hideTimer);
 		}
 		// Show banner if status changes back to non-ready
-		if ((effectiveRecommendation !== "ready" || backgroundLoading) && !isVisible) {
+		if (
+			(effectiveRecommendation !== "ready" || backgroundLoading) &&
+			!isVisible
+		) {
 			onVisibilityChange(true);
 		}
-	}, [effectiveRecommendation, backgroundLoading, isVisible, onVisibilityChange]);
+	}, [
+		effectiveRecommendation,
+		backgroundLoading,
+		isVisible,
+		onVisibilityChange,
+	]);
 
 	return (
 		<div

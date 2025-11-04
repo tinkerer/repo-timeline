@@ -144,10 +144,15 @@ export function buildEdges(files: FileData[]): FileEdge[] {
 		}
 	});
 
-	const rootEdges = edges.filter(e => e.source === "/");
-	console.log(`  ✓ Created ${edges.length} total edges, ${rootEdges.length} from root`);
+	const rootEdges = edges.filter((e) => e.source === "/");
+	console.log(
+		`  ✓ Created ${edges.length} total edges, ${rootEdges.length} from root`,
+	);
 	if (rootEdges.length > 0) {
-		console.log(`  Root edge targets:`, rootEdges.map(e => e.target));
+		console.log(
+			`  Root edge targets:`,
+			rootEdges.map((e) => e.target),
+		);
 	}
 
 	return edges;
