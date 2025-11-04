@@ -229,7 +229,7 @@ export const RepoGraph3D = forwardRef<RepoGraph3DHandle, RepoGraph3DProps>(
 					canvasRef.current = canvas as unknown as HTMLCanvasElement;
 				}
 			}}
-			camera={{ position: [0, 0, 200], fov: 75 }}
+			camera={{ position: [0, 0, 200], fov: 75, near: 0.1, far: 10000 }}
 			style={{ background: "#0f172a" }}
 			gl={{
 				powerPreference: "high-performance",
