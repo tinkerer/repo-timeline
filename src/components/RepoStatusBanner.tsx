@@ -85,55 +85,59 @@ export function RepoStatusBanner({
 				isAnimatingOut ? "max-h-0 opacity-0" : "max-h-24 opacity-100"
 			}`}
 		>
-			<div className={`py-2 px-4 border-b ${statusColors[effectiveRecommendation]}`}>
-			<div className="flex items-center gap-4 text-sm">
-				<div className="flex items-center gap-2">
-					<span className="text-lg">
-						{statusIcons[effectiveRecommendation]}
-					</span>
-					<span className="font-semibold">
-						{statusMessages[effectiveRecommendation]}
-					</span>
-					{backgroundLoading && loadProgress && (
-						<span className="text-xs opacity-75">
-							({loadProgress.loaded}/
-							{loadProgress.total !== -1 ? loadProgress.total : "?"} PRs -{" "}
-							{loadProgress.percentage}%)
+			<div
+				className={`py-2 px-4 border-b ${statusColors[effectiveRecommendation]}`}
+			>
+				<div className="flex items-center gap-4 text-sm">
+					<div className="flex items-center gap-2">
+						<span className="text-lg">
+							{statusIcons[effectiveRecommendation]}
 						</span>
-					)}
-				</div>
-				<div className="flex items-center gap-4 flex-wrap">
-					<div>
-						<strong>GitHub:</strong> ~{github.estimatedTotalPRs} PRs
-						{github.firstMergedPR && (
-							<span className="ml-1 text-xs opacity-75">
-								(from #{github.firstMergedPR.number})
+						<span className="font-semibold">
+							{statusMessages[effectiveRecommendation]}
+						</span>
+						{backgroundLoading && loadProgress && (
+							<span className="text-xs opacity-75">
+								({loadProgress.loaded}/
+								{loadProgress.total !== -1 ? loadProgress.total : "?"} PRs -{" "}
+								{loadProgress.percentage}%)
 							</span>
 						)}
 					</div>
-					<div>
-						<strong>Cached:</strong> {cache.cachedPRs} PRs
-						{cache.exists && github.estimatedTotalPRs > 0 && (
-							<span className="ml-1 text-xs opacity-75">
-								(
-								{Math.round((cache.cachedPRs / github.estimatedTotalPRs) * 100)}
-								%)
-							</span>
-						)}
-						{cache.ageSeconds && (
-							<span className="ml-1 text-xs opacity-75">
-								• {Math.round(cache.ageSeconds / 60)}m ago
-							</span>
-						)}
-					</div>
-					{cache.firstPR && cache.lastPR && (
-						<div className="text-xs opacity-75">
-							{new Date(cache.firstPR.merged_at).toLocaleDateString()} -{" "}
-							{new Date(cache.lastPR.merged_at).toLocaleDateString()}
+					<div className="flex items-center gap-4 flex-wrap">
+						<div>
+							<strong>GitHub:</strong> ~{github.estimatedTotalPRs} PRs
+							{github.firstMergedPR && (
+								<span className="ml-1 text-xs opacity-75">
+									(from #{github.firstMergedPR.number})
+								</span>
+							)}
 						</div>
-					)}
+						<div>
+							<strong>Cached:</strong> {cache.cachedPRs} PRs
+							{cache.exists && github.estimatedTotalPRs > 0 && (
+								<span className="ml-1 text-xs opacity-75">
+									(
+									{Math.round(
+										(cache.cachedPRs / github.estimatedTotalPRs) * 100,
+									)}
+									%)
+								</span>
+							)}
+							{cache.ageSeconds && (
+								<span className="ml-1 text-xs opacity-75">
+									• {Math.round(cache.ageSeconds / 60)}m ago
+								</span>
+							)}
+						</div>
+						{cache.firstPR && cache.lastPR && (
+							<div className="text-xs opacity-75">
+								{new Date(cache.firstPR.merged_at).toLocaleDateString()} -{" "}
+								{new Date(cache.lastPR.merged_at).toLocaleDateString()}
+							</div>
+						)}
+					</div>
 				</div>
-			</div>
 			</div>
 		</div>
 	);
