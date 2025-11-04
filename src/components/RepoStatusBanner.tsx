@@ -1,3 +1,5 @@
+import type { LoadProgress } from "../types";
+
 interface RepoStatusBannerProps {
 	github: {
 		estimatedTotalPRs: number;
@@ -13,12 +15,16 @@ interface RepoStatusBannerProps {
 		lastPR: { number: number; merged_at: string } | null;
 	};
 	recommendation: "ready" | "partial" | "fetching";
+	backgroundLoading?: boolean;
+	loadProgress?: LoadProgress | null;
 }
 
 export function RepoStatusBanner({
 	github,
 	cache,
 	recommendation,
+	backgroundLoading = false,
+	loadProgress = null,
 }: RepoStatusBannerProps) {
 	console.log("RepoStatusBanner render:", {
 		github,
@@ -52,6 +58,13 @@ export function RepoStatusBanner({
 					<span className="font-semibold">
 						{statusMessages[recommendation]}
 					</span>
+					{backgroundLoading && loadProgress && (
+						<span className="text-xs opacity-75">
+							({loadProgress.loaded}/
+							{loadProgress.total !== -1 ? loadProgress.total : "?"} PRs -{" "}
+							{loadProgress.percentage}%)
+						</span>
+					)}
 				</div>
 				<div className="flex items-center gap-4 flex-wrap">
 					<div>

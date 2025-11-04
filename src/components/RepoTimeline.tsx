@@ -147,6 +147,8 @@ export function RepoTimeline({
 					github={repoStatus.github}
 					cache={repoStatus.cache}
 					recommendation={repoStatus.recommendation}
+					backgroundLoading={backgroundLoading}
+					loadProgress={loadProgress}
 				/>
 			)}
 
