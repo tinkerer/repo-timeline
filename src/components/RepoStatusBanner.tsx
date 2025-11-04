@@ -51,10 +51,14 @@ export function RepoStatusBanner({
 			: recommendation;
 
 	return (
-		<div className={`py-2 px-4 border-b ${statusColors[effectiveRecommendation]}`}>
+		<div
+			className={`py-2 px-4 border-b ${statusColors[effectiveRecommendation]}`}
+		>
 			<div className="flex items-center gap-4 text-sm">
 				<div className="flex items-center gap-2">
-					<span className="text-lg">{statusIcons[effectiveRecommendation]}</span>
+					<span className="text-lg">
+						{statusIcons[effectiveRecommendation]}
+					</span>
 					<span className="font-semibold">
 						{statusMessages[effectiveRecommendation]}
 					</span>

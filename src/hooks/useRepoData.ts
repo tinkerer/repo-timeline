@@ -211,7 +211,6 @@ export function useRepoData({
 				dispatch({ type: "SET_CACHE_STATUS", status: cacheStatus.cache });
 				dispatch({ type: "SET_REPO_SUMMARY", summary: summary.github });
 
-
 				// Build combined status
 				const status: RepoStatus = {
 					cache: cacheStatus.cache,
@@ -240,7 +239,6 @@ export function useRepoData({
 				dispatch({ type: "SET_TOTAL_PRS", count: metadata.prs.length });
 				dispatch({ type: "SET_TIME_RANGE", range: metadata.timeRange });
 				dispatch({ type: "SET_CURRENT_TIME", time: metadata.timeRange.start });
-
 			} catch (err) {
 				console.error("[Stage 2] Error loading metadata:", err);
 				// Don't block - continue to load commits

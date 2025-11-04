@@ -77,7 +77,6 @@ export class GitService {
 			end: Math.max(...timestamps),
 		};
 
-
 		return { prs, timeRange };
 	}
 
