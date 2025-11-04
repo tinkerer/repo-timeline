@@ -82,8 +82,8 @@ function repoDataReducer(
 					start: Math.min(...times),
 					end: Math.max(...times),
 				};
-				const newCurrentTime =
-					state.currentTime === 0 ? newTimeRange.start : state.currentTime;
+				// Always reset to start when commits load to ensure scrubber starts at beginning
+				const newCurrentTime = newTimeRange.start;
 				return {
 					...state,
 					commits: action.commits,

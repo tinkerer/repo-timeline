@@ -44,13 +44,19 @@ export function RepoStatusBanner({
 		fetching: "⏳",
 	};
 
+	// Override recommendation if we're not actually loading in background
+	const effectiveRecommendation =
+		recommendation === "fetching" && !backgroundLoading
+			? "ready"
+			: recommendation;
+
 	return (
-		<div className={`py-2 px-4 border-b ${statusColors[recommendation]}`}>
+		<div className={`py-2 px-4 border-b ${statusColors[effectiveRecommendation]}`}>
 			<div className="flex items-center gap-4 text-sm">
 				<div className="flex items-center gap-2">
-					<span className="text-lg">{statusIcons[recommendation]}</span>
+					<span className="text-lg">{statusIcons[effectiveRecommendation]}</span>
 					<span className="font-semibold">
-						{statusMessages[recommendation]}
+						{statusMessages[effectiveRecommendation]}
 					</span>
 					{backgroundLoading && loadProgress && (
 						<span className="text-xs opacity-75">
