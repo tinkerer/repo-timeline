@@ -57,7 +57,11 @@ describe("useRepoData", () => {
 				end: new Date("2024-01-31").getTime(),
 			},
 		});
-		mockGetCommitHistory.mockResolvedValue(mockCommits);
+		mockGetCommitHistory.mockResolvedValue({
+			commits: mockCommits,
+			hasMore: false,
+			totalCount: mockCommits.length,
+		});
 		mockGetCacheInfo.mockReturnValue({ exists: false });
 		mockGetRateLimitInfo.mockReturnValue(null);
 	});
@@ -205,12 +209,16 @@ describe("useRepoData", () => {
 		});
 
 		it("should load commits from cache", async () => {
-			mockGetCommitHistory.mockResolvedValue(mockCommits);
+			mockGetCommitHistory.mockResolvedValue({
+				commits: mockCommits,
+				hasMore: false,
+				totalCount: mockCommits.length,
+			});
 
 			const { result } = renderHook(() =>
 				useRepoData({
 					repoPath: "facebook/react",
-					testMode: true,
+					testMode: false,
 				}),
 			);
 
@@ -222,12 +230,16 @@ describe("useRepoData", () => {
 		});
 
 		it("should set time range from cached commits", async () => {
-			mockGetCommitHistory.mockResolvedValue(mockCommits);
+			mockGetCommitHistory.mockResolvedValue({
+				commits: mockCommits,
+				hasMore: false,
+				totalCount: mockCommits.length,
+			});
 
 			const { result } = renderHook(() =>
 				useRepoData({
 					repoPath: "facebook/react",
-					testMode: true,
+					testMode: false,
 				}),
 			);
 
@@ -244,7 +256,11 @@ describe("useRepoData", () => {
 		it("should set current time to start of range", async () => {
 			// Make metadata fail so currentTime starts at 0
 			mockGetMetadata.mockRejectedValue(new Error("No metadata"));
-			mockGetCommitHistory.mockResolvedValue(mockCommits);
+			mockGetCommitHistory.mockResolvedValue({
+				commits: mockCommits,
+				hasMore: false,
+				totalCount: mockCommits.length,
+			});
 
 			const { result } = renderHook(() =>
 				useRepoData({
@@ -392,7 +408,11 @@ describe("useRepoData", () => {
 			});
 
 			// Simulate successful cache load
-			mockGetCommitHistory.mockResolvedValue(mockCommits);
+			mockGetCommitHistory.mockResolvedValue({
+				commits: mockCommits,
+				hasMore: false,
+				totalCount: mockCommits.length,
+			});
 
 			const { result } = renderHook(() =>
 				useRepoData({
@@ -428,13 +448,17 @@ describe("useRepoData", () => {
 
 	describe("setCurrentTime", () => {
 		it("should set current time with number", async () => {
-			mockGetCommitHistory.mockResolvedValue(mockCommits);
+			mockGetCommitHistory.mockResolvedValue({
+				commits: mockCommits,
+				hasMore: false,
+				totalCount: mockCommits.length,
+			});
 			mockGetCacheInfo.mockReturnValue({ exists: true });
 
 			const { result } = renderHook(() =>
 				useRepoData({
 					repoPath: "facebook/react",
-					testMode: true,
+					testMode: false,
 				}),
 			);
 
@@ -451,13 +475,17 @@ describe("useRepoData", () => {
 		});
 
 		it("should set current time with updater function", async () => {
-			mockGetCommitHistory.mockResolvedValue(mockCommits);
+			mockGetCommitHistory.mockResolvedValue({
+				commits: mockCommits,
+				hasMore: false,
+				totalCount: mockCommits.length,
+			});
 			mockGetCacheInfo.mockReturnValue({ exists: true });
 
 			const { result } = renderHook(() =>
 				useRepoData({
 					repoPath: "facebook/react",
-					testMode: true,
+					testMode: false,
 				}),
 			);
 
@@ -481,12 +509,16 @@ describe("useRepoData", () => {
 				age: 1000,
 				commitCount: 2,
 			});
-			mockGetCommitHistory.mockResolvedValue(mockCommits);
+			mockGetCommitHistory.mockResolvedValue({
+				commits: mockCommits,
+				hasMore: false,
+				totalCount: mockCommits.length,
+			});
 
 			const { result } = renderHook(() =>
 				useRepoData({
 					repoPath: "facebook/react",
-					testMode: true,
+					testMode: false,
 				}),
 			);
 
@@ -521,7 +553,11 @@ describe("useRepoData", () => {
 
 			mockGetCacheInfo.mockReturnValue({ exists: true });
 			mockGetRateLimitInfo.mockReturnValue(mockRateLimit);
-			mockGetCommitHistory.mockResolvedValue(mockCommits);
+			mockGetCommitHistory.mockResolvedValue({
+				commits: mockCommits,
+				hasMore: false,
+				totalCount: mockCommits.length,
+			});
 
 			const { result } = renderHook(() =>
 				useRepoData({
@@ -633,7 +669,11 @@ describe("useRepoData", () => {
 	describe("repoPath changes", () => {
 		it("should reload data when repoPath changes", async () => {
 			mockGetCacheInfo.mockReturnValue({ exists: true });
-			mockGetCommitHistory.mockResolvedValue(mockCommits);
+			mockGetCommitHistory.mockResolvedValue({
+				commits: mockCommits,
+				hasMore: false,
+				totalCount: mockCommits.length,
+			});
 
 			const { rerender } = renderHook(
 				({ repoPath }) =>

@@ -56,8 +56,8 @@ describe("buildFileTree", () => {
 
 			const nodes = buildFileTree(files);
 
-			// Should have: file + src directory (no virtual root for nested-only files)
-			expect(nodes).toHaveLength(2);
+			// Should have: file + src directory + virtual root
+			expect(nodes).toHaveLength(3);
 
 			const fileNode = nodes.find((n) => n.path === "src/index.ts");
 			expect(fileNode).toEqual({
@@ -102,8 +102,8 @@ describe("buildFileTree", () => {
 
 			const nodes = buildFileTree(files);
 
-			// Should have: file + src dir + components dir
-			expect(nodes).toHaveLength(3);
+			// Should have: file + src dir + components dir + root
+			expect(nodes).toHaveLength(4);
 
 			expect(nodes.find((n) => n.path === "src")).toBeDefined();
 			expect(nodes.find((n) => n.path === "src/components")).toBeDefined();
@@ -126,8 +126,8 @@ describe("buildFileTree", () => {
 
 			const nodes = buildFileTree(files);
 
-			// Should have: file + 5 directory nodes (a, a/b, a/b/c, a/b/c/d, a/b/c/d/e)
-			expect(nodes).toHaveLength(6);
+			// Should have: file + 5 directory nodes (a, a/b, a/b/c, a/b/c/d, a/b/c/d/e) + root
+			expect(nodes).toHaveLength(7);
 
 			expect(nodes.find((n) => n.path === "a")).toBeDefined();
 			expect(nodes.find((n) => n.path === "a/b")).toBeDefined();
@@ -145,8 +145,8 @@ describe("buildFileTree", () => {
 
 			const nodes = buildFileTree(files);
 
-			// Should have: 2 files + src dir + utils dir
-			expect(nodes).toHaveLength(4);
+			// Should have: 2 files + src dir + utils dir + root
+			expect(nodes).toHaveLength(5);
 
 			const utilsDirs = nodes.filter((n) => n.path === "src/utils");
 			expect(utilsDirs).toHaveLength(1);
@@ -261,7 +261,7 @@ describe("buildFileTree", () => {
 			expect(nodes.find((n) => n.path === "/")).toBeDefined();
 		});
 
-		it("should not create virtual root when no root-level files exist", () => {
+		it("should always create virtual root when files exist", () => {
 			const files: FileData[] = [
 				{ path: "src/index.ts", size: 100 },
 				{ path: "src/utils/helpers.ts", size: 200 },
@@ -270,7 +270,8 @@ describe("buildFileTree", () => {
 			const nodes = buildFileTree(files);
 
 			const rootNode = nodes.find((n) => n.path === "/");
-			expect(rootNode).toBeUndefined();
+			expect(rootNode).toBeDefined();
+			expect(rootNode?.type).toBe("directory");
 		});
 	});
 
@@ -357,8 +358,14 @@ describe("buildEdges", () => {
 
 			const edges = buildEdges(files);
 
-			expect(edges).toHaveLength(1);
-			expect(edges[0]).toEqual({
+			// Now includes: / -> src, src -> src/index.ts
+			expect(edges).toHaveLength(2);
+			expect(edges).toContainEqual({
+				source: "/",
+				target: "src",
+				type: "parent",
+			});
+			expect(edges).toContainEqual({
 				source: "src",
 				target: "src/index.ts",
 				type: "parent",
@@ -372,10 +379,20 @@ describe("buildEdges", () => {
 
 			const edges = buildEdges(files);
 
-			// Only one edge: src/components -> src/components/Button.tsx
-			// (buildEdges doesn't create directory-to-directory edges)
-			expect(edges).toHaveLength(1);
-			expect(edges[0]).toEqual({
+			// Now creates directory-to-directory edges:
+			// / -> src, src -> src/components, src/components -> src/components/Button.tsx
+			expect(edges).toHaveLength(3);
+			expect(edges).toContainEqual({
+				source: "/",
+				target: "src",
+				type: "parent",
+			});
+			expect(edges).toContainEqual({
+				source: "src",
+				target: "src/components",
+				type: "parent",
+			});
+			expect(edges).toContainEqual({
 				source: "src/components",
 				target: "src/components/Button.tsx",
 				type: "parent",
@@ -392,7 +409,13 @@ describe("buildEdges", () => {
 
 			const edges = buildEdges(files);
 
-			expect(edges).toHaveLength(2);
+			// Now includes: / -> src, src -> src/index.ts, src -> src/app.ts
+			expect(edges).toHaveLength(3);
+			expect(edges).toContainEqual({
+				source: "/",
+				target: "src",
+				type: "parent",
+			});
 			expect(edges).toContainEqual({
 				source: "src",
 				target: "src/index.ts",
@@ -415,8 +438,11 @@ describe("buildEdges", () => {
 
 			const edges = buildEdges(files);
 
-			// One edge per file
-			expect(edges).toHaveLength(4);
+			// Now includes directory-to-directory edges:
+			// / -> package.json, / -> src, src -> src/index.ts,
+			// src -> src/components, src/components -> Button.tsx,
+			// src -> src/utils, src/utils -> helpers.ts
+			expect(edges).toHaveLength(7);
 
 			// Root-level file
 			expect(edges).toContainEqual({
@@ -460,8 +486,30 @@ describe("buildEdges", () => {
 
 			const edges = buildEdges(files);
 
-			expect(edges).toHaveLength(1);
-			expect(edges[0]).toEqual({
+			// Now includes all directory-to-directory edges:
+			// / -> a, a -> a/b, a/b -> a/b/c, a/b/c -> a/b/c/d, a/b/c/d -> file.txt
+			expect(edges).toHaveLength(5);
+			expect(edges).toContainEqual({
+				source: "/",
+				target: "a",
+				type: "parent",
+			});
+			expect(edges).toContainEqual({
+				source: "a",
+				target: "a/b",
+				type: "parent",
+			});
+			expect(edges).toContainEqual({
+				source: "a/b",
+				target: "a/b/c",
+				type: "parent",
+			});
+			expect(edges).toContainEqual({
+				source: "a/b/c",
+				target: "a/b/c/d",
+				type: "parent",
+			});
+			expect(edges).toContainEqual({
 				source: "a/b/c/d",
 				target: "a/b/c/d/file.txt",
 				type: "parent",
@@ -476,10 +524,16 @@ describe("buildEdges", () => {
 
 			const edges = buildEdges(files);
 
-			expect(edges).toHaveLength(2);
+			// Now includes: / -> a, / -> b, b -> b/c
+			expect(edges).toHaveLength(3);
 			expect(edges).toContainEqual({
 				source: "/",
 				target: "a",
+				type: "parent",
+			});
+			expect(edges).toContainEqual({
+				source: "/",
+				target: "b",
 				type: "parent",
 			});
 			expect(edges).toContainEqual({
@@ -504,17 +558,37 @@ describe("buildEdges", () => {
 	});
 
 	describe("edge source/target correctness", () => {
-		it("should connect file to immediate parent directory only", () => {
+		it("should connect all directory levels", () => {
 			const files: FileData[] = [
 				{ path: "src/components/ui/Button.tsx", size: 100 },
 			];
 
 			const edges = buildEdges(files);
 
-			// Should only create edge from immediate parent (src/components/ui)
-			expect(edges).toHaveLength(1);
-			expect(edges[0].source).toBe("src/components/ui");
-			expect(edges[0].target).toBe("src/components/ui/Button.tsx");
+			// Now creates full directory chain:
+			// / -> src, src -> src/components, src/components -> src/components/ui,
+			// src/components/ui -> src/components/ui/Button.tsx
+			expect(edges).toHaveLength(4);
+			expect(edges).toContainEqual({
+				source: "/",
+				target: "src",
+				type: "parent",
+			});
+			expect(edges).toContainEqual({
+				source: "src",
+				target: "src/components",
+				type: "parent",
+			});
+			expect(edges).toContainEqual({
+				source: "src/components",
+				target: "src/components/ui",
+				type: "parent",
+			});
+			expect(edges).toContainEqual({
+				source: "src/components/ui",
+				target: "src/components/ui/Button.tsx",
+				type: "parent",
+			});
 		});
 
 		it("should handle mixed file depths correctly", () => {
@@ -526,7 +600,9 @@ describe("buildEdges", () => {
 
 			const edges = buildEdges(files);
 
-			expect(edges).toHaveLength(3);
+			// Now includes directory edges:
+			// / -> a.txt, / -> b, b -> b/c.txt, / -> d, d -> d/e, d/e -> d/e/f.txt
+			expect(edges).toHaveLength(6);
 
 			// Root-level file connects to /
 			const rootEdge = edges.find((e) => e.target === "a.txt");
@@ -539,6 +615,23 @@ describe("buildEdges", () => {
 			// Two-level deep
 			const twoLevel = edges.find((e) => e.target === "d/e/f.txt");
 			expect(twoLevel?.source).toBe("d/e");
+
+			// Check directory edges exist
+			expect(edges).toContainEqual({
+				source: "/",
+				target: "b",
+				type: "parent",
+			});
+			expect(edges).toContainEqual({
+				source: "/",
+				target: "d",
+				type: "parent",
+			});
+			expect(edges).toContainEqual({
+				source: "d",
+				target: "d/e",
+				type: "parent",
+			});
 		});
 	});
 });

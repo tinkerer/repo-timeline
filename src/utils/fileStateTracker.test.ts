@@ -582,7 +582,7 @@ describe("FileStateTracker", () => {
 			expect(data[0]).toEqual({ path: "test.ts", size: 100 });
 		});
 
-		it("should ensure non-negative sizes", () => {
+		it("should filter out files with non-positive sizes", () => {
 			tracker.updateFromPRFiles([
 				{
 					filename: "test.ts",
@@ -605,7 +605,8 @@ describe("FileStateTracker", () => {
 			]);
 
 			const data = tracker.getFileData();
-			expect(data[0].size).toBe(0); // Should be clamped to 0, not -50
+			// Files with size <= 0 are filtered out (effectively deleted)
+			expect(data).toHaveLength(0);
 		});
 
 		it("should return multiple files", () => {
