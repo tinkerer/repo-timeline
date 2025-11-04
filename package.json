@@ -1,5 +1,5 @@
 {
-	"name": "@rjwalters/repo-timeline",
+	"name": "@tinkerer/repo-timeline",
 	"version": "1.0.0",
 	"description": "3D visualization of GitHub repository evolution over time using React Three Fiber",
 	"private": false,
@@ -31,13 +31,13 @@
 	],
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/rjwalters/repo-timeline"
+		"url": "https://github.com/tinkerer/repo-timeline"
 	},
-	"homepage": "https://rjwalters.github.io/repo-timeline/",
+	"homepage": "https://tinkerer.github.io/repo-timeline/",
 	"bugs": {
-		"url": "https://github.com/rjwalters/repo-timeline/issues"
+		"url": "https://github.com/tinkerer/repo-timeline/issues"
 	},
-	"author": "Robb Walters",
+	"author": "tinkerer",
 	"license": "MIT",
 	"scripts": {
 		"dev": "vite --config vite.demo.config.ts",

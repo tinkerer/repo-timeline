@@ -1,11 +1,11 @@
 # Repo Timeline Visualizer
 
-[![Test & Coverage](https://github.com/rjwalters/repo-timeline/actions/workflows/test.yml/badge.svg)](https://github.com/rjwalters/repo-timeline/actions/workflows/test.yml)
-[![codecov](https://codecov.io/gh/rjwalters/repo-timeline/branch/main/graph/badge.svg)](https://codecov.io/gh/rjwalters/repo-timeline)
+[![Test & Coverage](https://github.com/tinkerer/repo-timeline/actions/workflows/test.yml/badge.svg)](https://github.com/tinkerer/repo-timeline/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/tinkerer/repo-timeline/branch/main/graph/badge.svg)](https://codecov.io/gh/tinkerer/repo-timeline)
 
 A 3D visualization tool for exploring Git repository evolution over time. Watch your codebase grow, change, and evolve with an interactive force-directed graph showing files and directories as connected nodes in 3D space.
 
-🌐 **[Live Demo](https://rjwalters.github.io/repo-timeline/)**
+🌐 **[Live Demo](https://tinkerer.github.io/repo-timeline/)**
 
 ## Quick Start
 
@@ -14,16 +14,16 @@ A 3D visualization tool for exploring Git repository evolution over time. Watch 
 Install the package in your React application:
 
 ```bash
-npm install @rjwalters/repo-timeline
+npm install @tinkerer/repo-timeline
 # or
-pnpm add @rjwalters/repo-timeline
+pnpm add @tinkerer/repo-timeline
 ```
 
 Then import and use the component:
 
 ```tsx
-import { RepoTimeline } from '@rjwalters/repo-timeline';
-import '@rjwalters/repo-timeline/dist/style.css';
+import { RepoTimeline } from '@tinkerer/repo-timeline';
+import '@tinkerer/repo-timeline/dist/style.css';
 
 function App() {
   return (
