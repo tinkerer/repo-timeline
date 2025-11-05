@@ -301,7 +301,7 @@ export function useRepoData({
 						dispatch({ type: "SET_LOAD_PROGRESS", progress });
 					}, forceRefresh);
 
-					console.log('[AUTOLOAD] useRepoData received initial result:', {
+					console.log("[AUTOLOAD] useRepoData received initial result:", {
 						commits: result.commits.length,
 						hasMore: result.hasMore,
 						totalCount: result.totalCount,
@@ -429,18 +429,20 @@ export function useRepoData({
 	}, [loadCommits]);
 
 	const loadMore = useCallback(async () => {
-		console.log('[AUTOLOAD] loadMore() called', {
+		console.log("[AUTOLOAD] loadMore() called", {
 			hasGitService: !!gitServiceRef.current,
 			backgroundLoading: state.backgroundLoading,
 			commitsLength: state.commits.length,
 		});
 
 		if (!gitServiceRef.current || state.backgroundLoading) {
-			console.log('[AUTOLOAD] loadMore() skipped - no service or already loading');
+			console.log(
+				"[AUTOLOAD] loadMore() skipped - no service or already loading",
+			);
 			return;
 		}
 
-		console.log('[AUTOLOAD] Starting background load...');
+		console.log("[AUTOLOAD] Starting background load...");
 		dispatch({ type: "SET_BACKGROUND_LOADING", loading: true });
 
 		try {
@@ -453,13 +455,16 @@ export function useRepoData({
 				}
 			}
 
-			console.log('[AUTOLOAD] Calling gitService.loadMoreCommits with offset:', state.commits.length);
+			console.log(
+				"[AUTOLOAD] Calling gitService.loadMoreCommits with offset:",
+				state.commits.length,
+			);
 			const result = await gitServiceRef.current.loadMoreCommits(
 				state.commits.length,
 				40,
 				existingFiles,
 				(commit) => {
-					console.log('[AUTOLOAD] Received commit:', commit.hash);
+					console.log("[AUTOLOAD] Received commit:", commit.hash);
 					dispatch({ type: "APPEND_COMMITS", commits: [commit] });
 				},
 				(progress) => {
@@ -467,7 +472,7 @@ export function useRepoData({
 				},
 			);
 
-			console.log('[AUTOLOAD] Load complete:', {
+			console.log("[AUTOLOAD] Load complete:", {
 				newCommits: result.commits.length,
 				hasMore: result.hasMore,
 				totalCount: result.totalCount,
@@ -482,7 +487,7 @@ export function useRepoData({
 			dispatch({ type: "SET_BACKGROUND_LOADING", loading: false });
 			dispatch({ type: "SET_LOAD_PROGRESS", progress: null });
 		} catch (error) {
-			console.error('[AUTOLOAD] Error loading more commits:', error);
+			console.error("[AUTOLOAD] Error loading more commits:", error);
 			dispatch({ type: "SET_BACKGROUND_LOADING", loading: false });
 			dispatch({ type: "SET_LOAD_PROGRESS", progress: null });
 		}

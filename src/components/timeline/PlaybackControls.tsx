@@ -131,16 +131,16 @@ export const PlaybackControls = memo(function PlaybackControls({
 				<ChevronsRight size={18} />
 			</button>
 
-		{/* Reset view */}
-		{onResetView && (
-			<button
-				onClick={onResetView}
-				className="p-2 bg-gray-700 hover:bg-gray-600 rounded transition-colors ml-2"
-				title="Reset camera view"
-			>
-				<RotateCcw size={18} />
-			</button>
-		)}
+			{/* Reset view */}
+			{onResetView && (
+				<button
+					onClick={onResetView}
+					className="p-2 bg-gray-700 hover:bg-gray-600 rounded transition-colors ml-2"
+					title="Reset camera view"
+				>
+					<RotateCcw size={18} />
+				</button>
+			)}
 		</div>
 	);
 });
