@@ -9,10 +9,7 @@ interface FileNode3DProps {
 	onClick?: (node: FileNode) => void;
 }
 
-export function FileNode3D({
-	node,
-	onClick,
-}: FileNode3DProps) {
+export function FileNode3D({ node, onClick }: FileNode3DProps) {
 	const meshRef = useRef<THREE.Mesh>(null);
 	const [transitionOpacity, setTransitionOpacity] = useState(1);
 	const [animatedRadius, setAnimatedRadius] = useState(0);
@@ -50,7 +47,11 @@ export function FileNode3D({
 	// Base color based on file type
 	// Root node is white, directories bright blue, files green
 	const isRoot = node.id === "/" || node.path === "/";
-	const baseColor = isRoot ? "#ffffff" : node.type === "directory" ? "#60a5fa" : "#10b981";
+	const baseColor = isRoot
+		? "#ffffff"
+		: node.type === "directory"
+			? "#60a5fa"
+			: "#10b981";
 
 	// Determine transition color based on file status and size change
 	let transitionColor: string | null = null;

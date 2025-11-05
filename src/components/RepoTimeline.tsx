@@ -1,4 +1,10 @@
-import { ArrowLeft, ChevronDown, ChevronUp, Loader2, RefreshCw } from "lucide-react";
+import {
+	ArrowLeft,
+	ChevronDown,
+	ChevronUp,
+	Loader2,
+	RefreshCw,
+} from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { TEST_MODE } from "../config";
 import { usePlaybackTimer } from "../hooks/usePlaybackTimer";
@@ -83,7 +89,7 @@ export function RepoTimeline({
 
 	// Autoload more commits when approaching the end
 	useEffect(() => {
-		console.log('[AUTOLOAD] Check:', {
+		console.log("[AUTOLOAD] Check:", {
 			hasMoreCommits,
 			backgroundLoading,
 			commitsCount: commits.length,
@@ -92,7 +98,7 @@ export function RepoTimeline({
 		});
 
 		if (!hasMoreCommits || backgroundLoading || commits.length === 0) {
-			console.log('[AUTOLOAD] Skip - conditions not met:', {
+			console.log("[AUTOLOAD] Skip - conditions not met:", {
 				hasMoreCommits,
 				backgroundLoading,
 				hasCommits: commits.length > 0,
@@ -105,7 +111,7 @@ export function RepoTimeline({
 		const elapsed = currentTime - timeRange.start;
 		const progress = elapsed / totalTime;
 
-		console.log('[AUTOLOAD] Progress:', {
+		console.log("[AUTOLOAD] Progress:", {
 			progress: `${Math.round(progress * 100)}%`,
 			currentTime,
 			timeRange,
@@ -115,10 +121,20 @@ export function RepoTimeline({
 
 		// Trigger loading when we're at 80% through the loaded commits
 		if (progress > 0.8) {
-			console.log('[AUTOLOAD] 🚀 Triggering loadMore() - at', `${Math.round(progress * 100)}%`);
+			console.log(
+				"[AUTOLOAD] 🚀 Triggering loadMore() - at",
+				`${Math.round(progress * 100)}%`,
+			);
 			loadMore();
 		}
-	}, [currentTime, timeRange, hasMoreCommits, backgroundLoading, commits.length, loadMore]);
+	}, [
+		currentTime,
+		timeRange,
+		hasMoreCommits,
+		backgroundLoading,
+		commits.length,
+		loadMore,
+	]);
 
 	const handlePlayPause = useCallback(() => {
 		setIsPlaying(!isPlaying);
@@ -209,10 +225,18 @@ export function RepoTimeline({
 									<button
 										onClick={handleToggleBannerVisibility}
 										className="absolute -top-7 left-2 p-1 bg-gray-900 bg-opacity-90 text-gray-400 hover:text-white rounded transition-colors"
-										title={isBannerVisible ? "Hide cache status" : "Show cache status"}
-										style={{ transform: 'translateY(-18px)' }}
+										title={
+											isBannerVisible
+												? "Hide cache status"
+												: "Show cache status"
+										}
+										style={{ transform: "translateY(-18px)" }}
 									>
-										{isBannerVisible ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+										{isBannerVisible ? (
+											<ChevronDown size={16} />
+										) : (
+											<ChevronUp size={16} />
+										)}
 									</button>
 								}
 							/>
