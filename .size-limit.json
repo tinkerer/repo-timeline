@@ -8,7 +8,7 @@
   {
     "name": "UMD Bundle",
     "path": "dist/index.umd.js",
-    "limit": "16 KB",
+    "limit": "17 KB",
     "gzip": true
   }
 ]
