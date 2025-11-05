@@ -74,6 +74,10 @@ export function RepoTimeline({
 		graphRef.current?.resetCamera();
 	}, []);
 
+	const handleNodeDoubleClick = useCallback((node: FileNode) => {
+		graphRef.current?.focusOnNode(node);
+	}, []);
+
 	const currentIndex = getCurrentIndex(commits, currentTime);
 
 	// Use playback timer hook for automatic time advancement
@@ -203,6 +207,7 @@ export function RepoTimeline({
 					nodes={currentCommit.files}
 					edges={currentCommit.edges}
 					onNodeClick={handleNodeClick}
+					onNodeDoubleClick={handleNodeDoubleClick}
 				/>
 			</div>
 
