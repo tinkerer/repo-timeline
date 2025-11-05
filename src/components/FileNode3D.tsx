@@ -7,9 +7,10 @@ import { FileNode } from "../types";
 interface FileNode3DProps {
 	node: FileNode;
 	onClick?: (node: FileNode) => void;
+	onDoubleClick?: (node: FileNode) => void;
 }
 
-export function FileNode3D({ node, onClick }: FileNode3DProps) {
+export function FileNode3D({ node, onClick, onDoubleClick }: FileNode3DProps) {
 	const meshRef = useRef<THREE.Mesh>(null);
 	const [transitionOpacity, setTransitionOpacity] = useState(1);
 	const [animatedRadius, setAnimatedRadius] = useState(0);
@@ -123,6 +124,12 @@ export function FileNode3D({ node, onClick }: FileNode3DProps) {
 		}
 	};
 
+	const handleDoubleClick = () => {
+		if (onDoubleClick) {
+			onDoubleClick(node);
+		}
+	};
+
 	// Calculate final color by blending base color with transition color
 	const finalColor =
 		transitionColor && transitionOpacity > 0
@@ -147,7 +154,11 @@ export function FileNode3D({ node, onClick }: FileNode3DProps) {
 		<group position={[node.x || 0, node.y || 0, node.z || 0]}>
 			{isDirectory ? (
 				// Directories as octahedrons (8-sided diamond shape)
-				<mesh ref={meshRef} onClick={handleClick}>
+				<mesh
+					ref={meshRef}
+					onClick={handleClick}
+					onDoubleClick={handleDoubleClick}
+				>
 					<octahedronGeometry args={[displayRadius, 0]} />
 					<meshStandardMaterial
 						color={finalColor}
@@ -165,6 +176,7 @@ export function FileNode3D({ node, onClick }: FileNode3DProps) {
 					ref={meshRef}
 					args={[displayRadius, 16, 16]}
 					onClick={handleClick}
+					onDoubleClick={handleDoubleClick}
 				>
 					<meshStandardMaterial
 						color={finalColor}

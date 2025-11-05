@@ -1,5 +1,5 @@
 import { OrbitControls } from "@react-three/drei";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useThree } from "@react-three/fiber";
 import {
 	forwardRef,
 	useEffect,
@@ -7,6 +7,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { FileEdge, FileNode } from "../types";
 import { ForceSimulation } from "../utils/forceSimulation";
@@ -17,28 +18,161 @@ interface RepoGraph3DProps {
 	nodes: FileNode[];
 	edges: FileEdge[];
 	onNodeClick?: (node: FileNode) => void;
+	onNodeDoubleClick?: (node: FileNode) => void;
 }
 
 export interface RepoGraph3DHandle {
 	resetCamera: () => void;
+	focusOnNode: (node: FileNode) => void;
+}
+
+// Camera controller for smooth zoom animations
+interface CameraControllerProps {
+	focusTarget: { node: FileNode; nodes: FileNode[]; edges: FileEdge[] } | null;
+	onFocusComplete: () => void;
+}
+
+function CameraController({
+	focusTarget,
+	onFocusComplete,
+}: CameraControllerProps) {
+	const { camera, controls } = useThree();
+	const animatingRef = useRef(false);
+	const startPosition = useRef(new THREE.Vector3());
+	const startTarget = useRef(new THREE.Vector3());
+	const endPosition = useRef(new THREE.Vector3());
+	const endTarget = useRef(new THREE.Vector3());
+	const animationProgress = useRef(0);
+
+	useEffect(() => {
+		if (!focusTarget || animatingRef.current) return;
+
+		const { node, nodes, edges } = focusTarget;
+		const orbitControls = controls as OrbitControlsImpl;
+
+		// Calculate target position and camera position based on node type
+		const nodePosition = new THREE.Vector3(
+			node.x || 0,
+			node.y || 0,
+			node.z || 0,
+		);
+
+		let cameraDistance = 50; // Default distance for single file
+
+		if (node.type === "directory") {
+			// Find all children of this directory
+			const childIds = edges
+				.filter((edge) => edge.source === node.id)
+				.map((edge) => edge.target);
+
+			const children = nodes.filter((n) => childIds.includes(n.id));
+
+			if (children.length > 0) {
+				// Calculate bounding box of all children
+				const bounds = new THREE.Box3();
+				children.forEach((child) => {
+					bounds.expandByPoint(
+						new THREE.Vector3(child.x || 0, child.y || 0, child.z || 0),
+					);
+				});
+
+				// Include the directory node itself
+				bounds.expandByPoint(nodePosition);
+
+				// Calculate size of bounding box
+				const size = new THREE.Vector3();
+				bounds.getSize(size);
+				const maxDim = Math.max(size.x, size.y, size.z);
+
+				// Set camera distance based on bounding box size
+				// Use a multiplier to ensure all nodes are visible
+				cameraDistance = Math.max(maxDim * 1.5, 50);
+
+				// Update target to center of bounding box
+				bounds.getCenter(nodePosition);
+			}
+		}
+
+		// Calculate camera position (move camera back along the view direction)
+		const currentDirection = new THREE.Vector3();
+		camera.getWorldDirection(currentDirection);
+		const cameraPosition = nodePosition
+			.clone()
+			.sub(currentDirection.multiplyScalar(-cameraDistance));
+
+		// Store start and end positions for animation
+		startPosition.current.copy(camera.position);
+		startTarget.current.copy(orbitControls.target);
+		endPosition.current.copy(cameraPosition);
+		endTarget.current.copy(nodePosition);
+		animationProgress.current = 0;
+		animatingRef.current = true;
+
+		// Animate camera
+		const animationDuration = 1000; // 1 second
+		const startTime = Date.now();
+
+		const animate = () => {
+			const elapsed = Date.now() - startTime;
+			const progress = Math.min(elapsed / animationDuration, 1);
+
+			// Use ease-in-out function for smooth animation
+			const easeProgress =
+				progress < 0.5
+					? 2 * progress * progress
+					: 1 - Math.pow(-2 * progress + 2, 2) / 2;
+
+			// Interpolate camera position and target
+			camera.position.lerpVectors(
+				startPosition.current,
+				endPosition.current,
+				easeProgress,
+			);
+			orbitControls.target.lerpVectors(
+				startTarget.current,
+				endTarget.current,
+				easeProgress,
+			);
+			orbitControls.update();
+
+			if (progress < 1) {
+				requestAnimationFrame(animate);
+			} else {
+				animatingRef.current = false;
+				onFocusComplete();
+			}
+		};
+
+		animate();
+	}, [focusTarget, camera, controls, onFocusComplete]);
+
+	return null;
 }
 
 export const RepoGraph3D = forwardRef<RepoGraph3DHandle, RepoGraph3DProps>(
-	function RepoGraph3D({ nodes, edges, onNodeClick }, ref) {
+	function RepoGraph3D({ nodes, edges, onNodeClick, onNodeDoubleClick }, ref) {
 		const [simulationNodes, setSimulationNodes] = useState<FileNode[]>(nodes);
 		const [contextLost, setContextLost] = useState(false);
+		const [focusTarget, setFocusTarget] = useState<{
+			node: FileNode;
+			nodes: FileNode[];
+			edges: FileEdge[];
+		} | null>(null);
 		const simulationRef = useRef<ForceSimulation | null>(null);
 		const animationFrameRef = useRef<number>();
 		const canvasRef = useRef<HTMLCanvasElement | null>(null);
 		const previousNodesRef = useRef<Map<string, FileNode>>(new Map());
 		const orbitControlsRef = useRef<OrbitControlsImpl>(null);
 
-		// Expose reset function to parent
+		// Expose reset function and focus function to parent
 		useImperativeHandle(ref, () => ({
 			resetCamera: () => {
 				if (orbitControlsRef.current) {
 					orbitControlsRef.current.reset();
 				}
+			},
+			focusOnNode: (node: FileNode) => {
+				setFocusTarget({ node, nodes: simulationNodes, edges });
 			},
 		}));
 
@@ -262,7 +396,12 @@ export const RepoGraph3D = forwardRef<RepoGraph3DHandle, RepoGraph3DProps>(
 
 				{/* Render nodes */}
 				{simulationNodes.map((node) => (
-					<FileNode3D key={node.id} node={node} onClick={onNodeClick} />
+					<FileNode3D
+						key={node.id}
+						node={node}
+						onClick={onNodeClick}
+						onDoubleClick={onNodeDoubleClick}
+					/>
 				))}
 
 				<OrbitControls
@@ -271,6 +410,12 @@ export const RepoGraph3D = forwardRef<RepoGraph3DHandle, RepoGraph3DProps>(
 					dampingFactor={0.05}
 					rotateSpeed={0.5}
 					zoomSpeed={0.5}
+				/>
+
+				{/* Camera controller for smooth zoom animations */}
+				<CameraController
+					focusTarget={focusTarget}
+					onFocusComplete={() => setFocusTarget(null)}
 				/>
 			</Canvas>
 		);
