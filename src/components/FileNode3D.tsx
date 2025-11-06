@@ -1,5 +1,5 @@
 import { Sphere, Text } from "@react-three/drei";
-import { useFrame } from "@react-three/fiber";
+import { ThreeEvent, useFrame } from "@react-three/fiber";
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { FileNode } from "../types";
@@ -118,13 +118,15 @@ export function FileNode3D({ node, onClick, onDoubleClick }: FileNode3DProps) {
 		}
 	});
 
-	const handleClick = () => {
+	const handleClick = (event: ThreeEvent<MouseEvent>) => {
+		event.stopPropagation();
 		if (onClick) {
 			onClick(node);
 		}
 	};
 
-	const handleDoubleClick = () => {
+	const handleDoubleClick = (event: ThreeEvent<MouseEvent>) => {
+		event.stopPropagation();
 		if (onDoubleClick) {
 			onDoubleClick(node);
 		}
